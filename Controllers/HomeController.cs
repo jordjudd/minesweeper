@@ -96,7 +96,7 @@ public class HomeController : Controller
             var game = new GameBoard(9, 9, 10);
             HttpContext.Session.Set("game", game);
             
-            return Json(new { success = true, gameState = game });
+            return Json(new { success = true, message = "New game started" });
         }
         catch (Exception ex)
         {

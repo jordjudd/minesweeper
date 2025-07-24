@@ -64,11 +64,22 @@
 @section Scripts {
     <script>
         function revealCell(row, col) {
+            // Don't allow clicks on revealed or flagged cells
+            var cell = $('[data-row="' + row + '"][data-col="' + col + '"]');
+            if (cell.hasClass('revealed') || cell.hasClass('flagged')) {
+                return;
+            }
+
             $.post('/Home/RevealCell', { row: row, col: col }, function(data) {
                 if (data.success) {
                     console.log('Cell revealed:', data);
                     updateCell(row, col, data);
                     updateGameStatus(data.gameStatus);
+                    
+                    // If game is over, disable all clicks
+                    if (data.gameStatus === 'Won' || data.gameStatus === 'Lost') {
+                        $('.cell').css('pointer-events', 'none');
+                    }
                 } else {
                     console.error('Error:', data.error);
                     alert('Error: ' + data.error);
@@ -98,6 +109,8 @@
         function newGame() {
             $.post('/Home/NewGame', function(data) {
                 if (data.success) {
+                    // Re-enable clicks and reload page for fresh game
+                    $('.cell').css('pointer-events', 'auto');
                     location.reload();
                 } else {
                     console.error('Error:', data.error);
@@ -144,11 +157,28 @@
             
             if (status === 'Won') {
                 statusElement.html('<span class="won">You Won! 🎉</span>');
+                showGameOver('🎉 Congratulations! You Won! 🎉', 'won');
             } else if (status === 'Lost') {
                 statusElement.html('<span class="lost">Game Over 💥</span>');
+                showGameOver('💥 Game Over! You hit a mine! 💥', 'lost');
             } else {
                 statusElement.html('<span>Playing - Mines: 10</span>');
             }
+        }
+
+        function showGameOver(message, type) {
+            $('#gameOverText').html(message);
+            $('#gameOverMessage').removeClass('won lost').addClass(type);
+            $('#gameOverOverlay').css('display', 'flex');
+        }
+
+        function hideGameOver() {
+            $('#gameOverOverlay').hide();
+        }
+
+        function startNewGame() {
+            hideGameOver();
+            newGame();
         }
     </script>
 }
