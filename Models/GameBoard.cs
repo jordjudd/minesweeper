@@ -94,6 +94,17 @@ public class GameBoard
 
     private void CalculateNumbers()
     {
+        // First, ensure all mines are properly placed
+        int actualMineCount = 0;
+        for (int i = 0; i < Rows; i++)
+        {
+            for (int j = 0; j < Cols; j++)
+            {
+                if (Board[i, j].IsMine) actualMineCount++;
+            }
+        }
+        
+        // Now calculate adjacent mine counts
         for (int i = 0; i < Rows; i++)
         {
             for (int j = 0; j < Cols; j++)
@@ -105,7 +116,7 @@ public class GameBoard
                 }
                 else
                 {
-                    // Ensure mines have 0 adjacent count (shouldn't matter but for safety)
+                    // Mines should not have adjacent counts
                     cell.AdjacentMines = 0;
                 }
             }
@@ -115,12 +126,19 @@ public class GameBoard
     private int CountAdjacentMines(int row, int col)
     {
         int count = 0;
+        
+        // Check all 8 adjacent cells (and center, but center should never be a mine when this is called)
         for (int i = -1; i <= 1; i++)
         {
             for (int j = -1; j <= 1; j++)
             {
+                // Skip the center cell (the cell we're counting for)
+                if (i == 0 && j == 0) continue;
+                
                 int newRow = row + i;
                 int newCol = col + j;
+                
+                // Check if the adjacent cell is valid and contains a mine
                 if (IsValidCell(newRow, newCol) && Board[newRow, newCol].IsMine)
                 {
                     count++;
@@ -234,6 +252,29 @@ public class GameBoard
     private bool IsValidCell(int row, int col)
     {
         return row >= 0 && row < Rows && col >= 0 && col < Cols;
+    }
+
+    public List<string> ValidateBoard()
+    {
+        var errors = new List<string>();
+        
+        for (int i = 0; i < Rows; i++)
+        {
+            for (int j = 0; j < Cols; j++)
+            {
+                var cell = Board[i, j];
+                if (!cell.IsMine)
+                {
+                    int actualCount = CountAdjacentMines(i, j);
+                    if (cell.AdjacentMines != actualCount)
+                    {
+                        errors.Add($"Cell ({i},{j}): Expected {actualCount} adjacent mines, but has {cell.AdjacentMines}");
+                    }
+                }
+            }
+        }
+        
+        return errors;
     }
 }
 

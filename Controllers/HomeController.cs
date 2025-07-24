@@ -157,6 +157,8 @@ public class HomeController : Controller
                 }
             }
             
+            var validationErrors = game.ValidateBoard();
+            
             return Json(new { 
                 success = true, 
                 board = boardState,
@@ -167,7 +169,8 @@ public class HomeController : Controller
                 difficulty = game.CurrentDifficulty.ToString(),
                 rows = game.Rows,
                 cols = game.Cols,
-                minePositions = minePositions
+                minePositions = minePositions,
+                validationErrors = validationErrors
             });
         }
         catch (Exception ex)

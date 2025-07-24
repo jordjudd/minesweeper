@@ -29,6 +29,7 @@
 <div class="controls">
     <button onclick="newGameWithCurrentDifficulty()">New Game</button>
     <button onclick="debugBoard()" style="background-color: #ff9800;">Debug Board</button>
+    <button onclick="showAllMines()" style="background-color: #e91e63; color: white;">Show All Mines</button>
 </div>
 
 <div class="game-board" id="gameBoard">
@@ -293,12 +294,51 @@
                                  ', Initialized: ' + data.isInitialized;
                     
                     if (verificationResults.length > 0) {
-                        message += '\n\nMine count errors found! Check console for details.';
+                        message += '\n\nClient-side mine count errors found! Check console for details.';
                     } else {
-                        message += '\n\nMine counting verification: PASSED';
+                        message += '\n\nClient-side mine counting verification: PASSED';
+                    }
+                    
+                    if (data.validationErrors && data.validationErrors.length > 0) {
+                        message += '\n\nServer-side validation errors:';
+                        data.validationErrors.forEach(function(error) {
+                            message += '\n- ' + error;
+                        });
+                        console.log('Server validation errors:', data.validationErrors);
+                    } else {
+                        message += '\n\nServer-side validation: PASSED';
                     }
                     
                     alert(message);
+                } else {
+                    console.error('Error:', data.error);
+                    alert('Error: ' + data.error);
+                }
+            }).fail(function(xhr, status, error) {
+                console.error('AJAX Error:', error);
+                alert('Network error: ' + error);
+            });
+        }
+
+        function showAllMines() {
+            $.get('/Home/GetBoardState', function(data) {
+                if (data.success) {
+                    console.log('Revealing all mines for debugging');
+                    
+                    // Show all mines on the board
+                    data.minePositions.forEach(function(mine) {
+                        var cell = $('[data-row="' + mine.row + '"][data-col="' + mine.col + '"]');
+                        if (!cell.hasClass('revealed')) {
+                            cell.addClass('mine-debug');
+                            cell.text('💣');
+                            cell.css({
+                                'background-color': '#ffcccc',
+                                'border': '2px solid #ff0000'
+                            });
+                        }
+                    });
+                    
+                    alert('All ' + data.minePositions.length + ' mines are now visible with pink background and red border.\nClick "New Game" to reset.');
                 } else {
                     console.error('Error:', data.error);
                     alert('Error: ' + data.error);
