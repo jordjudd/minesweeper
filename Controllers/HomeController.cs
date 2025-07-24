@@ -39,16 +39,33 @@ public class HomeController : Controller
             game.RevealCell(row, col);
             HttpContext.Session.Set("game", game);
             
-            // Return the updated cell information
-            var cell = game.Board[row, col];
+            // Create a list of all revealed cells to update the UI
+            var revealedCells = new List<object>();
+            for (int i = 0; i < game.Rows; i++)
+            {
+                for (int j = 0; j < game.Cols; j++)
+                {
+                    var cell = game.Board[i, j];
+                    if (cell.IsRevealed)
+                    {
+                        revealedCells.Add(new
+                        {
+                            row = i,
+                            col = j,
+                            isRevealed = cell.IsRevealed,
+                            isMine = cell.IsMine,
+                            isFlagged = cell.IsFlagged,
+                            adjacentMines = cell.AdjacentMines
+                        });
+                    }
+                }
+            }
+            
             return Json(new { 
                 success = true, 
-                row = row, 
-                col = col,
-                isRevealed = cell.IsRevealed,
-                isMine = cell.IsMine,
-                isFlagged = cell.IsFlagged,
-                adjacentMines = cell.AdjacentMines,
+                clickedRow = row, 
+                clickedCol = col,
+                revealedCells = revealedCells,
                 gameStatus = game.Status.ToString()
             });
         }
@@ -113,26 +130,35 @@ public class HomeController : Controller
             var game = HttpContext.Session.Get<GameBoard>("game") ?? new GameBoard(9, 9, 10);
             
             // Create a simplified board state for the client
-            var boardState = new object[game.Rows, game.Cols];
+            var boardState = new List<object>();
+            int mineCount = 0;
+            
             for (int i = 0; i < game.Rows; i++)
             {
                 for (int j = 0; j < game.Cols; j++)
                 {
                     var cell = game.Board[i, j];
-                    boardState[i, j] = new
+                    if (cell.IsMine) mineCount++;
+                    
+                    boardState.Add(new
                     {
+                        row = i,
+                        col = j,
                         isRevealed = cell.IsRevealed,
                         isMine = cell.IsMine,
                         isFlagged = cell.IsFlagged,
                         adjacentMines = cell.AdjacentMines
-                    };
+                    });
                 }
             }
             
             return Json(new { 
                 success = true, 
                 board = boardState,
-                gameStatus = game.Status.ToString()
+                gameStatus = game.Status.ToString(),
+                isInitialized = game.IsInitialized,
+                totalMines = mineCount,
+                expectedMines = game.MineCount
             });
         }
         catch (Exception ex)

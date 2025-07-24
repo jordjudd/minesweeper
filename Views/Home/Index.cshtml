@@ -22,6 +22,7 @@
 
 <div class="controls">
     <button onclick="newGame()">New Game</button>
+    <button onclick="debugBoard()" style="background-color: #ff9800;">Debug Board</button>
 </div>
 
 <div class="game-board" id="gameBoard">
@@ -73,7 +74,14 @@
             $.post('/Home/RevealCell', { row: row, col: col }, function(data) {
                 if (data.success) {
                     console.log('Cell revealed:', data);
-                    updateCell(row, col, data);
+                    
+                    // Update all revealed cells
+                    if (data.revealedCells) {
+                        data.revealedCells.forEach(function(cellData) {
+                            updateCell(cellData.row, cellData.col, cellData);
+                        });
+                    }
+                    
                     updateGameStatus(data.gameStatus);
                     
                     // If game is over, disable all clicks
@@ -179,6 +187,21 @@
         function startNewGame() {
             hideGameOver();
             newGame();
+        }
+
+        function debugBoard() {
+            $.get('/Home/GetBoardState', function(data) {
+                if (data.success) {
+                    console.log('Board State:', data);
+                    alert('Check console for board state. Mines: ' + data.totalMines + '/' + data.expectedMines + ', Initialized: ' + data.isInitialized);
+                } else {
+                    console.error('Error:', data.error);
+                    alert('Error: ' + data.error);
+                }
+            }).fail(function(xhr, status, error) {
+                console.error('AJAX Error:', error);
+                alert('Network error: ' + error);
+            });
         }
     </script>
 }
