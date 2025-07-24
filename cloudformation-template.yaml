@@ -86,12 +86,9 @@ Resources:
       ApplicationName: !Ref ApplicationName
       Description: 'Minesweeper .NET Web Application'
 
-  # Application Version (sample application initially)
-  ApplicationVersion:
-    Type: AWS::ElasticBeanstalk::ApplicationVersion
-    Properties:
-      ApplicationName: !Ref ElasticBeanstalkApplication
-      Description: 'Initial sample version - deploy your code separately'
+
+
+
 
   # Private S3 Bucket for source code (NOT public)
   SourceBucket:
@@ -116,7 +113,7 @@ Resources:
     Properties:
       ApplicationName: !Ref ElasticBeanstalkApplication
       Description: 'Configuration template for .NET application'
-      SolutionStackName: '64bit Amazon Linux 2 v2.6.0 running .NET 8'
+      SolutionStackName: '64bit Amazon Linux 2 v2.7.1 running .NET 8'
       OptionSettings:
         # Platform settings
         - Namespace: aws:elasticbeanstalk:environment
