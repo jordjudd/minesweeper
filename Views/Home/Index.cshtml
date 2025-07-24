@@ -1,0 +1,89 @@
+@model GameBoard
+
+<h1>Minesweeper</h1>
+
+<div class="game-info">
+    <div class="status" id="gameStatus">
+        @if (Model.Status == GameStatus.Playing)
+        {
+            <span>Playing - Mines: @Model.MineCount</span>
+        }
+        else if (Model.Status == GameStatus.Won)
+        {
+            <span class="won">You Won! 🎉</span>
+        }
+        else if (Model.Status == GameStatus.Lost)
+        {
+            <span class="lost">Game Over 💥</span>
+        }
+    </div>
+</div>
+
+<div class="controls">
+    <button onclick="newGame()">New Game</button>
+</div>
+
+<div class="game-board" id="gameBoard">
+    @for (int i = 0; i < Model.Rows; i++)
+    {
+        <div class="row">
+            @for (int j = 0; j < Model.Cols; j++)
+            {
+                var cell = Model.Board[i, j];
+                var cellClass = "cell";
+                var cellContent = "";
+                
+                if (cell.IsRevealed)
+                {
+                    cellClass += " revealed";
+                    if (cell.IsMine)
+                    {
+                        cellClass += " mine";
+                        cellContent = "💣";
+                    }
+                    else if (cell.AdjacentMines > 0)
+                    {
+                        cellContent = cell.AdjacentMines.ToString();
+                    }
+                }
+                else if (cell.IsFlagged)
+                {
+                    cellClass += " flagged";
+                    cellContent = "🚩";
+                }
+                
+                <div class="@cellClass" data-row="@i" data-col="@j" onclick="revealCell(@i, @j)" oncontextmenu="toggleFlag(@i, @j); return false;">
+                    @cellContent
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        function revealCell(row, col) {
+            $.post('/Home/RevealCell', { row: row, col: col }, function(data) {
+                if (data.success) {
+                    location.reload();
+                }
+            });
+        }
+
+        function toggleFlag(row, col) {
+            $.post('/Home/ToggleFlag', { row: row, col: col }, function(data) {
+                if (data.success) {
+                    location.reload();
+                }
+            });
+        }
+
+        function newGame() {
+            $.post('/Home/NewGame', function(data) {
+                if (data.success) {
+                    location.reload();
+                }
+            });
+        }
+    </script>
+}
