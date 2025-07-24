@@ -1,53 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "6HmN91e88Jk=",
-  "success": false,
+  "dgSpecHash": "ZY0UNUeNTCM=",
+  "success": true,
   "projectFilePath": "C:\\Users\\jordjudd\\Desktop\\new-kiro-project\\Minesweeper.csproj",
   "expectedPackageFiles": [],
-  "logs": [
-    {
-      "code": "NU1100",
-      "level": "Error",
-      "message": "Unable to resolve 'Microsoft.NETCore.App.Ref (= 8.0.17)' for 'net8.0'.",
-      "projectPath": "C:\\Users\\jordjudd\\Desktop\\new-kiro-project\\Minesweeper.csproj",
-      "filePath": "C:\\Users\\jordjudd\\Desktop\\new-kiro-project\\Minesweeper.csproj",
-      "libraryId": "Microsoft.NETCore.App.Ref",
-      "targetGraphs": [
-        "net8.0"
-      ]
-    },
-    {
-      "code": "NU1100",
-      "level": "Error",
-      "message": "Unable to resolve 'Microsoft.WindowsDesktop.App.Ref (= 8.0.17)' for 'net8.0'.",
-      "projectPath": "C:\\Users\\jordjudd\\Desktop\\new-kiro-project\\Minesweeper.csproj",
-      "filePath": "C:\\Users\\jordjudd\\Desktop\\new-kiro-project\\Minesweeper.csproj",
-      "libraryId": "Microsoft.WindowsDesktop.App.Ref",
-      "targetGraphs": [
-        "net8.0"
-      ]
-    },
-    {
-      "code": "NU1100",
-      "level": "Error",
-      "message": "Unable to resolve 'Microsoft.AspNetCore.App.Ref (= 8.0.17)' for 'net8.0'.",
-      "projectPath": "C:\\Users\\jordjudd\\Desktop\\new-kiro-project\\Minesweeper.csproj",
-      "filePath": "C:\\Users\\jordjudd\\Desktop\\new-kiro-project\\Minesweeper.csproj",
-      "libraryId": "Microsoft.AspNetCore.App.Ref",
-      "targetGraphs": [
-        "net8.0"
-      ]
-    },
-    {
-      "code": "NU1100",
-      "level": "Error",
-      "message": "Unable to resolve 'Microsoft.NETCore.App.Host.win-x64 (= 8.0.17)' for 'net8.0'.",
-      "projectPath": "C:\\Users\\jordjudd\\Desktop\\new-kiro-project\\Minesweeper.csproj",
-      "filePath": "C:\\Users\\jordjudd\\Desktop\\new-kiro-project\\Minesweeper.csproj",
-      "libraryId": "Microsoft.NETCore.App.Host.win-x64",
-      "targetGraphs": [
-        "net8.0"
-      ]
-    }
-  ]
+  "logs": []
 }

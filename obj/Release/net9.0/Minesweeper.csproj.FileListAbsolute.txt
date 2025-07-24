@@ -1,0 +1,9 @@
+C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\rpswa.dswa.cache.json
+C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\Minesweeper.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\Minesweeper.AssemblyInfoInputs.cache
+C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\Minesweeper.AssemblyInfo.cs
+C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\Minesweeper.csproj.CoreCompileInputs.cache
+C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\Minesweeper.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\Minesweeper.RazorAssemblyInfo.cache
+C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\Minesweeper.RazorAssemblyInfo.cs
+C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\Minesweeper.sourcelink.json
