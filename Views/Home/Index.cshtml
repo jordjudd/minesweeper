@@ -67,8 +67,8 @@
             $.post('/Home/RevealCell', { row: row, col: col }, function(data) {
                 if (data.success) {
                     console.log('Cell revealed:', data);
-                    // For now, just show an alert - we'll improve this later
-                    alert('Cell (' + row + ',' + col + ') revealed!');
+                    updateCell(row, col, data);
+                    updateGameStatus(data.gameStatus);
                 } else {
                     console.error('Error:', data.error);
                     alert('Error: ' + data.error);
@@ -83,7 +83,8 @@
             $.post('/Home/ToggleFlag', { row: row, col: col }, function(data) {
                 if (data.success) {
                     console.log('Flag toggled:', data);
-                    alert('Flag toggled on cell (' + row + ',' + col + ')!');
+                    updateCellFlag(row, col, data.isFlagged);
+                    updateGameStatus(data.gameStatus);
                 } else {
                     console.error('Error:', data.error);
                     alert('Error: ' + data.error);
@@ -106,6 +107,48 @@
                 console.error('AJAX Error:', error);
                 alert('Network error: ' + error);
             });
+        }
+
+        function updateCell(row, col, data) {
+            var cell = $('[data-row="' + row + '"][data-col="' + col + '"]');
+            
+            if (data.isRevealed) {
+                cell.addClass('revealed');
+                cell.removeClass('flagged');
+                
+                if (data.isMine) {
+                    cell.addClass('mine');
+                    cell.text('💣');
+                } else if (data.adjacentMines > 0) {
+                    cell.text(data.adjacentMines);
+                } else {
+                    cell.text('');
+                }
+            }
+        }
+
+        function updateCellFlag(row, col, isFlagged) {
+            var cell = $('[data-row="' + row + '"][data-col="' + col + '"]');
+            
+            if (isFlagged) {
+                cell.addClass('flagged');
+                cell.text('🚩');
+            } else {
+                cell.removeClass('flagged');
+                cell.text('');
+            }
+        }
+
+        function updateGameStatus(status) {
+            var statusElement = $('#gameStatus');
+            
+            if (status === 'Won') {
+                statusElement.html('<span class="won">You Won! 🎉</span>');
+            } else if (status === 'Lost') {
+                statusElement.html('<span class="lost">Game Over 💥</span>');
+            } else {
+                statusElement.html('<span>Playing - Mines: 10</span>');
+            }
         }
     </script>
 }

@@ -35,15 +35,21 @@ public class HomeController : Controller
         {
             _logger.LogInformation($"RevealCell called with row={row}, col={col}");
             
-            // For now, create a new game each time to avoid session issues
-            var game = new GameBoard(9, 9, 10);
+            var game = HttpContext.Session.Get<GameBoard>("game") ?? new GameBoard(9, 9, 10);
             game.RevealCell(row, col);
+            HttpContext.Session.Set("game", game);
             
+            // Return the updated cell information
+            var cell = game.Board[row, col];
             return Json(new { 
                 success = true, 
                 row = row, 
                 col = col,
-                message = "Cell revealed successfully" 
+                isRevealed = cell.IsRevealed,
+                isMine = cell.IsMine,
+                isFlagged = cell.IsFlagged,
+                adjacentMines = cell.AdjacentMines,
+                gameStatus = game.Status.ToString()
             });
         }
         catch (Exception ex)
@@ -60,11 +66,17 @@ public class HomeController : Controller
         {
             _logger.LogInformation($"ToggleFlag called with row={row}, col={col}");
             
+            var game = HttpContext.Session.Get<GameBoard>("game") ?? new GameBoard(9, 9, 10);
+            game.ToggleFlag(row, col);
+            HttpContext.Session.Set("game", game);
+            
+            var cell = game.Board[row, col];
             return Json(new { 
                 success = true, 
                 row = row, 
                 col = col,
-                message = "Flag toggled successfully" 
+                isFlagged = cell.IsFlagged,
+                gameStatus = game.Status.ToString()
             });
         }
         catch (Exception ex)
@@ -89,6 +101,43 @@ public class HomeController : Controller
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in NewGame");
+            return Json(new { success = false, error = ex.Message });
+        }
+    }
+
+    [HttpGet]
+    public IActionResult GetBoardState()
+    {
+        try
+        {
+            var game = HttpContext.Session.Get<GameBoard>("game") ?? new GameBoard(9, 9, 10);
+            
+            // Create a simplified board state for the client
+            var boardState = new object[game.Rows, game.Cols];
+            for (int i = 0; i < game.Rows; i++)
+            {
+                for (int j = 0; j < game.Cols; j++)
+                {
+                    var cell = game.Board[i, j];
+                    boardState[i, j] = new
+                    {
+                        isRevealed = cell.IsRevealed,
+                        isMine = cell.IsMine,
+                        isFlagged = cell.IsFlagged,
+                        adjacentMines = cell.AdjacentMines
+                    };
+                }
+            }
+            
+            return Json(new { 
+                success = true, 
+                board = boardState,
+                gameStatus = game.Status.ToString()
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in GetBoardState");
             return Json(new { success = false, error = ex.Message });
         }
     }
