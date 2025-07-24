@@ -1,0 +1,6 @@
+C:\Users\jordjudd\Desktop\new-kiro-project\publish\Minesweeper.exe
+C:\Users\jordjudd\Desktop\new-kiro-project\publish\web.config
+C:\Users\jordjudd\Desktop\new-kiro-project\publish\Minesweeper.dll
+C:\Users\jordjudd\Desktop\new-kiro-project\publish\Minesweeper.deps.json
+C:\Users\jordjudd\Desktop\new-kiro-project\publish\Minesweeper.runtimeconfig.json
+C:\Users\jordjudd\Desktop\new-kiro-project\publish\Minesweeper.pdb

@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace Minesweeper.Models;
 
 public class GameBoard
@@ -51,6 +53,16 @@ public class GameBoard
 
     private void PlaceMinesRandomly()
     {
+        // Clear any existing mines first
+        for (int i = 0; i < Rows; i++)
+        {
+            for (int j = 0; j < Cols; j++)
+            {
+                Board[i, j].IsMine = false;
+                Board[i, j].AdjacentMines = 0;
+            }
+        }
+        
         var random = new Random();
         int minesPlaced = 0;
 
@@ -66,6 +78,7 @@ public class GameBoard
             }
         }
 
+        // Recalculate all numbers after mine placement
         CalculateNumbers();
         IsInitialized = true;
     }
@@ -127,24 +140,22 @@ public class GameBoard
     {
         int count = 0;
         
-        // Check all 8 adjacent cells (and center, but center should never be a mine when this is called)
-        for (int i = -1; i <= 1; i++)
+        // Define the 8 adjacent positions explicitly
+        int[] deltaRows = { -1, -1, -1, 0, 0, 1, 1, 1 };
+        int[] deltaCols = { -1, 0, 1, -1, 1, -1, 0, 1 };
+        
+        for (int i = 0; i < 8; i++)
         {
-            for (int j = -1; j <= 1; j++)
+            int newRow = row + deltaRows[i];
+            int newCol = col + deltaCols[i];
+            
+            // Check if the adjacent cell is valid and contains a mine
+            if (IsValidCell(newRow, newCol) && Board[newRow, newCol].IsMine)
             {
-                // Skip the center cell (the cell we're counting for)
-                if (i == 0 && j == 0) continue;
-                
-                int newRow = row + i;
-                int newCol = col + j;
-                
-                // Check if the adjacent cell is valid and contains a mine
-                if (IsValidCell(newRow, newCol) && Board[newRow, newCol].IsMine)
-                {
-                    count++;
-                }
+                count++;
             }
         }
+        
         return count;
     }
 
@@ -179,28 +190,40 @@ public class GameBoard
 
     private void RevealAdjacentCells(int row, int col)
     {
-        for (int i = -1; i <= 1; i++)
+        // Use a queue to avoid deep recursion and ensure proper order
+        var cellsToReveal = new Queue<(int row, int col)>();
+        cellsToReveal.Enqueue((row, col));
+        
+        while (cellsToReveal.Count > 0)
         {
-            for (int j = -1; j <= 1; j++)
+            var (currentRow, currentCol) = cellsToReveal.Dequeue();
+            
+            // Check all 8 adjacent cells
+            for (int i = -1; i <= 1; i++)
             {
-                int newRow = row + i;
-                int newCol = col + j;
-                
-                // Skip the center cell and ensure we're within bounds
-                if ((i == 0 && j == 0) || !IsValidCell(newRow, newCol))
-                    continue;
-                
-                var cell = Board[newRow, newCol];
-                
-                // Only reveal if: not already revealed, not flagged, and NOT a mine
-                if (!cell.IsRevealed && !cell.IsFlagged && !cell.IsMine)
+                for (int j = -1; j <= 1; j++)
                 {
-                    cell.IsRevealed = true;
+                    // Skip the center cell
+                    if (i == 0 && j == 0) continue;
                     
-                    // If this cell has no adjacent mines, continue the cascade
-                    if (cell.AdjacentMines == 0)
+                    int newRow = currentRow + i;
+                    int newCol = currentCol + j;
+                    
+                    // Check bounds
+                    if (!IsValidCell(newRow, newCol)) continue;
+                    
+                    var cell = Board[newRow, newCol];
+                    
+                    // CRITICAL: Only reveal if it's NOT a mine, not already revealed, and not flagged
+                    if (!cell.IsMine && !cell.IsRevealed && !cell.IsFlagged)
                     {
-                        RevealAdjacentCells(newRow, newCol);
+                        cell.IsRevealed = true;
+                        
+                        // If this cell has no adjacent mines, add it to the queue for further expansion
+                        if (cell.AdjacentMines == 0)
+                        {
+                            cellsToReveal.Enqueue((newRow, newCol));
+                        }
                     }
                 }
             }
