@@ -1,10 +1,3 @@
-C:\Users\jordjudd\Desktop\new-kiro-project\bin\Release\net9.0\web.config
-C:\Users\jordjudd\Desktop\new-kiro-project\bin\Release\net9.0\Minesweeper.staticwebassets.endpoints.json
-C:\Users\jordjudd\Desktop\new-kiro-project\bin\Release\net9.0\Minesweeper.exe
-C:\Users\jordjudd\Desktop\new-kiro-project\bin\Release\net9.0\Minesweeper.deps.json
-C:\Users\jordjudd\Desktop\new-kiro-project\bin\Release\net9.0\Minesweeper.runtimeconfig.json
-C:\Users\jordjudd\Desktop\new-kiro-project\bin\Release\net9.0\Minesweeper.dll
-C:\Users\jordjudd\Desktop\new-kiro-project\bin\Release\net9.0\Minesweeper.pdb
 C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\rpswa.dswa.cache.json
 C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\Minesweeper.GeneratedMSBuildEditorConfig.editorconfig
 C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\Minesweeper.AssemblyInfoInputs.cache
@@ -14,16 +7,3 @@ C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\Minesweeper.MvcApp
 C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\Minesweeper.RazorAssemblyInfo.cache
 C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\Minesweeper.RazorAssemblyInfo.cs
 C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\Minesweeper.sourcelink.json
-C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\rjimswa.dswa.cache.json
-C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\rjsmrazor.dswa.cache.json
-C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\rjsmcshtml.dswa.cache.json
-C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\scopedcss\bundle\Minesweeper.styles.css
-C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\staticwebassets.build.json
-C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\staticwebassets.build.json.cache
-C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\staticwebassets.development.json
-C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\staticwebassets.build.endpoints.json
-C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\Minesweeper.dll
-C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\refint\Minesweeper.dll
-C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\Minesweeper.pdb
-C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\Minesweeper.genruntimeconfig.cache
-C:\Users\jordjudd\Desktop\new-kiro-project\obj\Release\net9.0\ref\Minesweeper.dll

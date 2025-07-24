@@ -7,9 +7,9 @@
     <div class="difficulty-selector">
         <label for="difficultySelect">Difficulty:</label>
         <select id="difficultySelect" onchange="changeDifficulty()">
-            <option value="Easy" @(Model.CurrentDifficulty == Difficulty.Easy ? "selected" : "")>Easy (9x9, 10 mines)</option>
-            <option value="Medium" @(Model.CurrentDifficulty == Difficulty.Medium ? "selected" : "")>Medium (16x16, 40 mines)</option>
-            <option value="Hard" @(Model.CurrentDifficulty == Difficulty.Hard ? "selected" : "")>Hard (16x30, 99 mines)</option>
+            <option value="Easy" selected="@(Model.CurrentDifficulty == Difficulty.Easy)">Easy (9x9, 10 mines)</option>
+            <option value="Medium" selected="@(Model.CurrentDifficulty == Difficulty.Medium)">Medium (16x16, 40 mines)</option>
+            <option value="Hard" selected="@(Model.CurrentDifficulty == Difficulty.Hard)">Hard (16x30, 99 mines)</option>
         </select>
     </div>
     <div class="status" id="gameStatus">
