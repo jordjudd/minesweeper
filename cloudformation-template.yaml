@@ -164,6 +164,18 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-ApplicationURL'
   
+  ApplicationName:
+    Description: 'Elastic Beanstalk Application Name'
+    Value: !Ref ElasticBeanstalkApplication
+    Export:
+      Name: !Sub '${AWS::StackName}-ApplicationName'
+  
+  EnvironmentName:
+    Description: 'Elastic Beanstalk Environment Name'
+    Value: !Ref ElasticBeanstalkEnvironment
+    Export:
+      Name: !Sub '${AWS::StackName}-EnvironmentName'
+  
   EnvironmentId:
     Description: 'Elastic Beanstalk Environment ID'
     Value: !Ref ElasticBeanstalkEnvironment
@@ -175,3 +187,39 @@ Outputs:
     Value: !Ref SourceBucket
     Export:
       Name: !Sub '${AWS::StackName}-SourceBucket'
+  
+  Region:
+    Description: 'AWS Region where resources are deployed'
+    Value: !Ref 'AWS::Region'
+    Export:
+      Name: !Sub '${AWS::StackName}-Region'
+  
+  StackName:
+    Description: 'CloudFormation Stack Name'
+    Value: !Ref 'AWS::StackName'
+    Export:
+      Name: !Sub '${AWS::StackName}-StackName'
+  
+  SolutionStack:
+    Description: 'Elastic Beanstalk Solution Stack Used'
+    Value: !Ref SolutionStackName
+    Export:
+      Name: !Sub '${AWS::StackName}-SolutionStack'
+  
+  InstanceType:
+    Description: 'EC2 Instance Type Used'
+    Value: !Ref InstanceType
+    Export:
+      Name: !Sub '${AWS::StackName}-InstanceType'
+  
+  GitRepository:
+    Description: 'Git Repository URL'
+    Value: !Ref GitRepositoryUrl
+    Export:
+      Name: !Sub '${AWS::StackName}-GitRepository'
+  
+  DeploymentInstructions:
+    Description: 'Instructions for deploying application updates'
+    Value: !Sub 'Run: aws elasticbeanstalk update-environment --application-name ${ElasticBeanstalkApplication} --environment-name ${ElasticBeanstalkEnvironment} --version-label <new-version>'
+    Export:
+      Name: !Sub '${AWS::StackName}-DeploymentInstructions'

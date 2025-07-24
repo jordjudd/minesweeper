@@ -159,15 +159,31 @@ aws elasticbeanstalk update-environment `
 if ($LASTEXITCODE -eq 0) {
     Write-Host "Deployment successful!" -ForegroundColor Green
     
-    # Get the application URL
-    $url = aws cloudformation describe-stacks `
+    # Get all stack outputs
+    Write-Host "`n=== DEPLOYMENT INFORMATION ===" -ForegroundColor Cyan
+    
+    $outputs = aws cloudformation describe-stacks `
         --stack-name $StackName `
         --region $Region `
-        --query "Stacks[0].Outputs[?OutputKey=='ApplicationURL'].OutputValue" `
-        --output text
+        --query "Stacks[0].Outputs" `
+        --output json | ConvertFrom-Json
     
-    Write-Host "Application URL: $url" -ForegroundColor Cyan
+    foreach ($output in $outputs) {
+        $key = $output.OutputKey
+        $value = $output.OutputValue
+        $description = $output.Description
+        
+        Write-Host "$key`: $value" -ForegroundColor Green
+        Write-Host "  Description: $description" -ForegroundColor Gray
+        Write-Host ""
+    }
+    
+    # Highlight the most important information
+    $url = ($outputs | Where-Object { $_.OutputKey -eq "ApplicationURL" }).OutputValue
+    Write-Host "🎮 PLAY MINESWEEPER: $url" -ForegroundColor Yellow -BackgroundColor DarkBlue
+    Write-Host ""
     Write-Host "Note: It may take a few minutes for the new version to be fully deployed." -ForegroundColor Yellow
+    Write-Host "Check the Elastic Beanstalk console for deployment status." -ForegroundColor Yellow
 } else {
     Write-Error "Application deployment failed. Check Elastic Beanstalk console for details."
 }
