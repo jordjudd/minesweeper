@@ -66,16 +66,31 @@
         function revealCell(row, col) {
             $.post('/Home/RevealCell', { row: row, col: col }, function(data) {
                 if (data.success) {
-                    location.reload();
+                    console.log('Cell revealed:', data);
+                    // For now, just show an alert - we'll improve this later
+                    alert('Cell (' + row + ',' + col + ') revealed!');
+                } else {
+                    console.error('Error:', data.error);
+                    alert('Error: ' + data.error);
                 }
+            }).fail(function(xhr, status, error) {
+                console.error('AJAX Error:', error);
+                alert('Network error: ' + error);
             });
         }
 
         function toggleFlag(row, col) {
             $.post('/Home/ToggleFlag', { row: row, col: col }, function(data) {
                 if (data.success) {
-                    location.reload();
+                    console.log('Flag toggled:', data);
+                    alert('Flag toggled on cell (' + row + ',' + col + ')!');
+                } else {
+                    console.error('Error:', data.error);
+                    alert('Error: ' + data.error);
                 }
+            }).fail(function(xhr, status, error) {
+                console.error('AJAX Error:', error);
+                alert('Network error: ' + error);
             });
         }
 
@@ -83,7 +98,13 @@
             $.post('/Home/NewGame', function(data) {
                 if (data.success) {
                     location.reload();
+                } else {
+                    console.error('Error:', data.error);
+                    alert('Error: ' + data.error);
                 }
+            }).fail(function(xhr, status, error) {
+                console.error('AJAX Error:', error);
+                alert('Network error: ' + error);
             });
         }
     </script>
