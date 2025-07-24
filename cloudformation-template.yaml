@@ -34,8 +34,8 @@ Parameters:
   
   SolutionStackName:
     Type: String
-    Default: '64bit Amazon Linux 2 v2.2.5 running .NET Core'
-    Description: 'Elastic Beanstalk solution stack name for .NET Core'
+    Default: '64bit Amazon Linux 2023 v3.5.1 running .NET 8'
+    Description: 'Elastic Beanstalk solution stack name for .NET'
 
 Resources:
   # IAM Role for Elastic Beanstalk Service
