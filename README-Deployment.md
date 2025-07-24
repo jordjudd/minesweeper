@@ -31,13 +31,38 @@ Optional parameters:
 zip -r source.zip . -x "*.git*" "*.vs*" "bin/*" "obj/*"
 ```
 
-2. Deploy using AWS CLI:
+2. Deploy CloudFormation stack:
 ```bash
 aws cloudformation deploy \
   --template-file cloudformation-template.yaml \
   --stack-name minesweeper-stack \
   --parameter-overrides GitRepositoryUrl=https://github.com/jordjudd/minesweeper.git \
   --capabilities CAPABILITY_IAM
+```
+
+3. Get the S3 bucket name and upload source:
+```bash
+BUCKET_NAME=$(aws cloudformation describe-stacks \
+  --stack-name minesweeper-stack \
+  --query "Stacks[0].Outputs[?OutputKey=='SourceBucket'].OutputValue" \
+  --output text)
+
+aws s3 cp source.zip s3://$BUCKET_NAME/source.zip
+```
+
+4. Create and deploy application version:
+```bash
+VERSION_LABEL="v$(date +%Y%m%d-%H%M%S)"
+
+aws elasticbeanstalk create-application-version \
+  --application-name minesweeper-app \
+  --version-label $VERSION_LABEL \
+  --source-bundle S3Bucket=$BUCKET_NAME,S3Key=source.zip
+
+aws elasticbeanstalk update-environment \
+  --application-name minesweeper-app \
+  --environment-name minesweeper-env \
+  --version-label $VERSION_LABEL
 ```
 
 ## Architecture

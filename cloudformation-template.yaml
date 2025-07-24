@@ -86,15 +86,12 @@ Resources:
       ApplicationName: !Ref ApplicationName
       Description: 'Minesweeper .NET Web Application'
 
-  # Application Version (using Git source)
+  # Application Version (sample application initially)
   ApplicationVersion:
     Type: AWS::ElasticBeanstalk::ApplicationVersion
     Properties:
       ApplicationName: !Ref ElasticBeanstalkApplication
-      Description: 'Initial version from Git repository'
-      SourceBundle:
-        S3Bucket: !Ref SourceBucket
-        S3Key: 'source.zip'
+      Description: 'Initial sample version - deploy your code separately'
 
   # Private S3 Bucket for source code (NOT public)
   SourceBucket:
@@ -157,7 +154,6 @@ Resources:
       EnvironmentName: !Ref EnvironmentName
       Description: 'Minesweeper application environment'
       TemplateName: !Ref ConfigurationTemplate
-      VersionLabel: !Ref ApplicationVersion
 
 Outputs:
   ApplicationURL:

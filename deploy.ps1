@@ -51,7 +51,7 @@ Remove-Item $tempDir -Recurse -Force
 
 Write-Host "Source bundle created: source.zip" -ForegroundColor Green
 
-# Deploy CloudFormation stack
+# Deploy CloudFormation stack first
 Write-Host "Deploying CloudFormation stack..." -ForegroundColor Yellow
 
 $parameters = @(
@@ -66,6 +66,62 @@ aws cloudformation deploy `
     --capabilities CAPABILITY_IAM `
     --region $Region
 
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "CloudFormation deployment failed. Check AWS CloudFormation console for details."
+    exit 1
+}
+
+Write-Host "CloudFormation stack deployed successfully!" -ForegroundColor Green
+
+# Get the S3 bucket name from CloudFormation outputs
+Write-Host "Getting S3 bucket name..." -ForegroundColor Yellow
+$bucketName = aws cloudformation describe-stacks `
+    --stack-name $StackName `
+    --region $Region `
+    --query "Stacks[0].Outputs[?OutputKey=='SourceBucket'].OutputValue" `
+    --output text
+
+if ([string]::IsNullOrEmpty($bucketName)) {
+    Write-Error "Could not retrieve S3 bucket name from CloudFormation stack."
+    exit 1
+}
+
+Write-Host "S3 Bucket: $bucketName" -ForegroundColor Green
+
+# Upload source bundle to S3
+Write-Host "Uploading source bundle to S3..." -ForegroundColor Yellow
+aws s3 cp source.zip "s3://$bucketName/source.zip" --region $Region
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Failed to upload source bundle to S3."
+    exit 1
+}
+
+Write-Host "Source bundle uploaded successfully!" -ForegroundColor Green
+
+# Create application version
+Write-Host "Creating Elastic Beanstalk application version..." -ForegroundColor Yellow
+$versionLabel = "v$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+
+aws elasticbeanstalk create-application-version `
+    --application-name "minesweeper-app" `
+    --version-label $versionLabel `
+    --source-bundle S3Bucket=$bucketName,S3Key=source.zip `
+    --region $Region
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Failed to create application version."
+    exit 1
+}
+
+# Deploy the new version to the environment
+Write-Host "Deploying application version to environment..." -ForegroundColor Yellow
+aws elasticbeanstalk update-environment `
+    --application-name "minesweeper-app" `
+    --environment-name "minesweeper-env" `
+    --version-label $versionLabel `
+    --region $Region
+
 if ($LASTEXITCODE -eq 0) {
     Write-Host "Deployment successful!" -ForegroundColor Green
     
@@ -77,8 +133,9 @@ if ($LASTEXITCODE -eq 0) {
         --output text
     
     Write-Host "Application URL: $url" -ForegroundColor Cyan
+    Write-Host "Note: It may take a few minutes for the new version to be fully deployed." -ForegroundColor Yellow
 } else {
-    Write-Error "Deployment failed. Check AWS CloudFormation console for details."
+    Write-Error "Application deployment failed. Check Elastic Beanstalk console for details."
 }
 
 Write-Host "Deployment script completed." -ForegroundColor Green
