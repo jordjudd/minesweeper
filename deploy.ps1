@@ -64,6 +64,20 @@ $zipPath = Join-Path (Get-Location) "source.zip"
 
 Write-Host "Source bundle created: source.zip" -ForegroundColor Green
 
+# Check if we need to clean up existing S3 bucket
+$expectedBucketName = "minesweeper-app-source-$((aws sts get-caller-identity --query Account --output text))-$Region"
+Write-Host "Checking for existing S3 bucket: $expectedBucketName" -ForegroundColor Yellow
+
+try {
+    $bucketExists = aws s3api head-bucket --bucket $expectedBucketName 2>$null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "Found existing S3 bucket. Emptying it..." -ForegroundColor Yellow
+        aws s3 rm "s3://$expectedBucketName" --recursive --region $Region
+    }
+} catch {
+    # Bucket doesn't exist, which is fine
+}
+
 # Check for available solution stacks if not specified
 if ([string]::IsNullOrEmpty($SolutionStack)) {
     Write-Host "Finding available .NET solution stacks..." -ForegroundColor Yellow
