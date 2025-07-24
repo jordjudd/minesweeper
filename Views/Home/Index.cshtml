@@ -224,7 +224,47 @@
             $.get('/Home/GetBoardState', function(data) {
                 if (data.success) {
                     console.log('Board State:', data);
-                    alert('Check console for board state. Difficulty: ' + data.difficulty + ', Size: ' + data.rows + 'x' + data.cols + ', Mines: ' + data.totalMines + '/' + data.expectedMines + ', Initialized: ' + data.isInitialized);
+                    console.log('Mine Positions:', data.minePositions);
+                    
+                    // Verify mine counting for a few cells
+                    var verificationResults = [];
+                    data.board.forEach(function(cell) {
+                        if (!cell.isMine && cell.adjacentMines > 0) {
+                            var actualCount = 0;
+                            for (var i = -1; i <= 1; i++) {
+                                for (var j = -1; j <= 1; j++) {
+                                    var checkRow = cell.row + i;
+                                    var checkCol = cell.col + j;
+                                    var adjacentCell = data.board.find(c => c.row === checkRow && c.col === checkCol);
+                                    if (adjacentCell && adjacentCell.isMine) {
+                                        actualCount++;
+                                    }
+                                }
+                            }
+                            if (actualCount !== cell.adjacentMines) {
+                                verificationResults.push({
+                                    position: '(' + cell.row + ',' + cell.col + ')',
+                                    expected: cell.adjacentMines,
+                                    actual: actualCount
+                                });
+                            }
+                        }
+                    });
+                    
+                    console.log('Mine Count Verification:', verificationResults);
+                    
+                    var message = 'Difficulty: ' + data.difficulty + 
+                                 ', Size: ' + data.rows + 'x' + data.cols + 
+                                 ', Mines: ' + data.totalMines + '/' + data.expectedMines + 
+                                 ', Initialized: ' + data.isInitialized;
+                    
+                    if (verificationResults.length > 0) {
+                        message += '\n\nMine count errors found! Check console for details.';
+                    } else {
+                        message += '\n\nMine counting verification: PASSED';
+                    }
+                    
+                    alert(message);
                 } else {
                     console.error('Error:', data.error);
                     alert('Error: ' + data.error);

@@ -134,13 +134,18 @@ public class HomeController : Controller
             // Create a simplified board state for the client
             var boardState = new List<object>();
             int mineCount = 0;
+            var minePositions = new List<object>();
             
             for (int i = 0; i < game.Rows; i++)
             {
                 for (int j = 0; j < game.Cols; j++)
                 {
                     var cell = game.Board[i, j];
-                    if (cell.IsMine) mineCount++;
+                    if (cell.IsMine) 
+                    {
+                        mineCount++;
+                        minePositions.Add(new { row = i, col = j });
+                    }
                     
                     boardState.Add(new
                     {
@@ -163,7 +168,8 @@ public class HomeController : Controller
                 expectedMines = game.MineCount,
                 difficulty = game.CurrentDifficulty.ToString(),
                 rows = game.Rows,
-                cols = game.Cols
+                cols = game.Cols,
+                minePositions = minePositions
             });
         }
         catch (Exception ex)
