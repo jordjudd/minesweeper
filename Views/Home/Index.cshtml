@@ -105,9 +105,11 @@
         }
 
         function toggleFlag(row, col) {
+            console.log('toggleFlag called for cell:', row, col);
+            
             $.post('/Home/ToggleFlag', { row: row, col: col }, function(data) {
                 if (data.success) {
-                    console.log('Flag toggled:', data);
+                    console.log('Flag toggled successfully:', data);
                     updateCellFlag(row, col, data.isFlagged);
                     updateGameStatus(data.gameStatus);
                 } else {
@@ -159,6 +161,7 @@
             
             if (isFlagged) {
                 cell.addClass('flagged');
+                cell.removeClass('revealed'); // Make sure it's not marked as revealed
                 cell.text('🚩');
             } else {
                 cell.removeClass('flagged');
@@ -184,11 +187,45 @@
         function showGameOver(message, type) {
             $('#gameOverText').html(message);
             $('#gameOverMessage').removeClass('won lost').addClass(type);
-            $('#gameOverOverlay').css('display', 'flex');
+            $('#gameOverOverlay').show();
+            
+            // Make the message draggable
+            makeDraggable($('#gameOverMessage')[0]);
         }
 
         function hideGameOver() {
             $('#gameOverOverlay').hide();
+        }
+
+        function makeDraggable(element) {
+            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+            
+            element.onmousedown = dragMouseDown;
+            
+            function dragMouseDown(e) {
+                e = e || window.event;
+                e.preventDefault();
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                document.onmouseup = closeDragElement;
+                document.onmousemove = elementDrag;
+            }
+            
+            function elementDrag(e) {
+                e = e || window.event;
+                e.preventDefault();
+                pos1 = pos3 - e.clientX;
+                pos2 = pos4 - e.clientY;
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                element.style.top = (element.offsetTop - pos2) + "px";
+                element.style.left = (element.offsetLeft - pos1) + "px";
+            }
+            
+            function closeDragElement() {
+                document.onmouseup = null;
+                document.onmousemove = null;
+            }
         }
 
         function startNewGame() {
