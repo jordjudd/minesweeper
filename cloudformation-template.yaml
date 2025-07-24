@@ -1,0 +1,179 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Minesweeper .NET Application on Elastic Beanstalk'
+
+Parameters:
+  ApplicationName:
+    Type: String
+    Default: 'minesweeper-app'
+    Description: 'Name of the Elastic Beanstalk application'
+  
+  EnvironmentName:
+    Type: String
+    Default: 'minesweeper-env'
+    Description: 'Name of the Elastic Beanstalk environment'
+  
+  GitRepositoryUrl:
+    Type: String
+    Default: 'https://github.com/jordjudd/minesweeper.git'
+    Description: 'HTTPS URL of your Git repository'
+  
+  GitBranch:
+    Type: String
+    Default: 'main'
+    Description: 'Git branch to deploy from'
+  
+  InstanceType:
+    Type: String
+    Default: 't3.micro'
+    AllowedValues:
+      - t3.micro
+      - t3.small
+      - t3.medium
+      - t3.large
+    Description: 'EC2 instance type for the Elastic Beanstalk environment'
+
+Resources:
+  # IAM Role for Elastic Beanstalk Service
+  ElasticBeanstalkServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: elasticbeanstalk.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkEnhancedHealth
+        - arn:aws:iam::aws:policy/AWSElasticBeanstalkManagedUpdatesCustomerRolePolicy
+
+  # IAM Role for EC2 instances
+  EC2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier
+        - arn:aws:iam::aws:policy/AWSElasticBeanstalkMulticontainerDocker
+        - arn:aws:iam::aws:policy/AWSElasticBeanstalkWorkerTier
+
+  # Instance Profile for EC2 instances
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref EC2InstanceRole
+
+  # CodeCommit Repository (if you want to use CodeCommit instead of external Git)
+  # Uncomment if you prefer to use CodeCommit
+  # CodeCommitRepository:
+  #   Type: AWS::CodeCommit::Repository
+  #   Properties:
+  #     RepositoryName: !Sub '${ApplicationName}-repo'
+  #     RepositoryDescription: 'Minesweeper application repository'
+
+  # Elastic Beanstalk Application
+  ElasticBeanstalkApplication:
+    Type: AWS::ElasticBeanstalk::Application
+    Properties:
+      ApplicationName: !Ref ApplicationName
+      Description: 'Minesweeper .NET Web Application'
+
+  # Application Version (using Git source)
+  ApplicationVersion:
+    Type: AWS::ElasticBeanstalk::ApplicationVersion
+    Properties:
+      ApplicationName: !Ref ElasticBeanstalkApplication
+      Description: 'Initial version from Git repository'
+      SourceBundle:
+        S3Bucket: !Ref SourceBucket
+        S3Key: 'source.zip'
+
+  # Private S3 Bucket for source code (NOT public)
+  SourceBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${ApplicationName}-source-${AWS::AccountId}-${AWS::Region}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+
+  # Configuration Template
+  ConfigurationTemplate:
+    Type: AWS::ElasticBeanstalk::ConfigurationTemplate
+    Properties:
+      ApplicationName: !Ref ElasticBeanstalkApplication
+      Description: 'Configuration template for .NET application'
+      SolutionStackName: '64bit Amazon Linux 2 v2.6.0 running .NET 8'
+      OptionSettings:
+        # Platform settings
+        - Namespace: aws:elasticbeanstalk:environment
+          OptionName: EnvironmentType
+          Value: SingleInstance
+        
+        # Instance settings
+        - Namespace: aws:autoscaling:launchconfiguration
+          OptionName: InstanceType
+          Value: !Ref InstanceType
+        - Namespace: aws:autoscaling:launchconfiguration
+          OptionName: IamInstanceProfile
+          Value: !Ref EC2InstanceProfile
+        
+        # Health monitoring
+        - Namespace: aws:elasticbeanstalk:healthreporting:system
+          OptionName: SystemType
+          Value: enhanced
+        
+        # Application settings
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: ASPNETCORE_ENVIRONMENT
+          Value: Production
+        
+        # Session state (using in-memory for simplicity)
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: SESSION_TIMEOUT
+          Value: '30'
+
+  # Elastic Beanstalk Environment
+  ElasticBeanstalkEnvironment:
+    Type: AWS::ElasticBeanstalk::Environment
+    Properties:
+      ApplicationName: !Ref ElasticBeanstalkApplication
+      EnvironmentName: !Ref EnvironmentName
+      Description: 'Minesweeper application environment'
+      TemplateName: !Ref ConfigurationTemplate
+      VersionLabel: !Ref ApplicationVersion
+
+Outputs:
+  ApplicationURL:
+    Description: 'URL of the Elastic Beanstalk application'
+    Value: !Sub 'http://${ElasticBeanstalkEnvironment.EndpointURL}'
+    Export:
+      Name: !Sub '${AWS::StackName}-ApplicationURL'
+  
+  EnvironmentId:
+    Description: 'Elastic Beanstalk Environment ID'
+    Value: !Ref ElasticBeanstalkEnvironment
+    Export:
+      Name: !Sub '${AWS::StackName}-EnvironmentId'
+  
+  SourceBucket:
+    Description: 'S3 Bucket for source code (Private)'
+    Value: !Ref SourceBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-SourceBucket'

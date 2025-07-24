@@ -1,0 +1,21 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Restore started on `date`
+      - dotnet restore
+  build:
+    commands:
+      - echo Build started on `date`
+      - dotnet build --configuration Release --no-restore
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - dotnet publish --configuration Release --no-build --output ./publish
+
+artifacts:
+  files:
+    - '**/*'
+  base-directory: publish
+  name: minesweeper-$(date +%Y-%m-%d)
