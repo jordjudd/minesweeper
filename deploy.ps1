@@ -4,7 +4,8 @@ param(
     
     [string]$StackName = "minesweeper-stack",
     [string]$Region = "us-east-1",
-    [string]$GitBranch = "main"
+    [string]$GitBranch = "main",
+    [string]$SolutionStack = ""
 )
 
 Write-Host "Deploying Minesweeper application..." -ForegroundColor Green
@@ -51,6 +52,23 @@ Remove-Item $tempDir -Recurse -Force
 
 Write-Host "Source bundle created: source.zip" -ForegroundColor Green
 
+# Check for available solution stacks if not specified
+if ([string]::IsNullOrEmpty($SolutionStack)) {
+    Write-Host "Finding available .NET solution stacks..." -ForegroundColor Yellow
+    try {
+        $availableStacks = aws elasticbeanstalk list-available-solution-stacks --region $Region --query "SolutionStacks[?contains(@, '.NET') || contains(@, 'dotnet')]" --output text
+        if ($availableStacks) {
+            $stackArray = $availableStacks -split "`n" | Where-Object { $_ -match "\.NET" }
+            if ($stackArray.Count -gt 0) {
+                $SolutionStack = $stackArray[0].Trim()
+                Write-Host "Using solution stack: $SolutionStack" -ForegroundColor Green
+            }
+        }
+    } catch {
+        Write-Warning "Could not auto-detect solution stack. Using default."
+    }
+}
+
 # Deploy CloudFormation stack first
 Write-Host "Deploying CloudFormation stack..." -ForegroundColor Yellow
 
@@ -58,6 +76,10 @@ $parameters = @(
     "ParameterKey=GitRepositoryUrl,ParameterValue=$GitRepositoryUrl",
     "ParameterKey=GitBranch,ParameterValue=$GitBranch"
 )
+
+if (![string]::IsNullOrEmpty($SolutionStack)) {
+    $parameters += "ParameterKey=SolutionStackName,ParameterValue=$SolutionStack"
+}
 
 aws cloudformation deploy `
     --template-file cloudformation-template.yaml `

@@ -106,11 +106,26 @@ Estimated monthly costs (us-east-1):
 - S3 storage: <$1/month
 - Data transfer: Variable based on usage
 
+## Finding the Correct Solution Stack
+
+If you encounter solution stack errors, run this script to find available .NET stacks:
+
+```powershell
+.\get-solution-stacks.ps1 -Region us-east-1
+```
+
+Then update the deployment with the correct stack:
+
+```powershell
+.\deploy.ps1 -SolutionStack "64bit Amazon Linux 2 v2.x.x running .NET Core"
+```
+
 ## Troubleshooting
 
-1. **Deployment fails**: Check CloudFormation events in AWS console
-2. **Application won't start**: Check Elastic Beanstalk logs
-3. **502/503 errors**: Verify .NET runtime version compatibility
+1. **Solution Stack Error**: Run `get-solution-stacks.ps1` to find available stacks
+2. **Deployment fails**: Check CloudFormation events in AWS console
+3. **Application won't start**: Check Elastic Beanstalk logs
+4. **502/503 errors**: Verify .NET runtime version compatibility
 
 ## Cleanup
 
