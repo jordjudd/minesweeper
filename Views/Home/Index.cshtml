@@ -173,12 +173,8 @@
                 // Add revealed styling
                 cell.addClass('revealed');
                 
-                // Only show numbers for safe cells
-                if (data.adjacentMines > 0) {
-                    cell.text(data.adjacentMines);
-                } else {
-                    cell.text('');
-                }
+                // Show numbers for safe cells (including 0)
+                cell.text(data.adjacentMines);
                 
                 console.log('✅ Updated safe cell (' + row + ',' + col + ') with ' + data.adjacentMines + ' adjacent mines');
             }
@@ -272,6 +268,12 @@
         }
 
         function newGameWithCurrentDifficulty() {
+            // Clear all debug styling before starting new game
+            $('.cell').removeClass('mine-debug').css({
+                'background-color': '',
+                'border': ''
+            });
+            
             $.post('/Home/NewGame', function(data) {
                 if (data.success) {
                     // Just reload the page for a completely fresh start
@@ -356,17 +358,21 @@
                 if (data.success) {
                     console.log('Revealing all mines for debugging');
                     
+                    // Clear any existing debug styling first
+                    $('.cell').removeClass('mine-debug').css({
+                        'background-color': '',
+                        'border': ''
+                    });
+                    
                     // Show all mines on the board
                     data.minePositions.forEach(function(mine) {
                         var cell = $('[data-row="' + mine.row + '"][data-col="' + mine.col + '"]');
-                        if (!cell.hasClass('revealed')) {
-                            cell.addClass('mine-debug');
-                            cell.text('💣');
-                            cell.css({
-                                'background-color': '#ffcccc',
-                                'border': '2px solid #ff0000'
-                            });
-                        }
+                        cell.addClass('mine-debug');
+                        cell.text('💣');
+                        cell.css({
+                            'background-color': '#ffcccc',
+                            'border': '2px solid #ff0000'
+                        });
                     });
                     
                     alert('All ' + data.minePositions.length + ' mines are now visible with pink background and red border.\nClick "New Game" to reset.');
