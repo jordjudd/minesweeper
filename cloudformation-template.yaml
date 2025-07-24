@@ -100,7 +100,7 @@ Resources:
     Type: AWS::S3::Bucket
     DeletionPolicy: Delete
     Properties:
-      BucketName: !Sub '${ApplicationName}-source-${AWS::AccountId}-${AWS::Region}'
+
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
