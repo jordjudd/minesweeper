@@ -18,37 +18,49 @@ try {
     exit 1
 }
 
-# Create source bundle
+# Build and publish the application
+Write-Host "Building and publishing .NET application..." -ForegroundColor Yellow
+
+# Clean previous builds
+if (Test-Path "bin") { Remove-Item "bin" -Recurse -Force }
+if (Test-Path "obj") { Remove-Item "obj" -Recurse -Force }
+if (Test-Path "publish") { Remove-Item "publish" -Recurse -Force }
+
+# Restore dependencies
+Write-Host "Restoring NuGet packages..." -ForegroundColor Yellow
+dotnet restore
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Failed to restore NuGet packages."
+    exit 1
+}
+
+# Build the application
+Write-Host "Building application..." -ForegroundColor Yellow
+dotnet build --configuration Release --no-restore
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Failed to build application."
+    exit 1
+}
+
+# Publish the application
+Write-Host "Publishing application..." -ForegroundColor Yellow
+dotnet publish --configuration Release --output publish --no-build
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Failed to publish application."
+    exit 1
+}
+
+# Create source bundle from published output
 Write-Host "Creating source bundle..." -ForegroundColor Yellow
 if (Test-Path "source.zip") {
     Remove-Item "source.zip"
 }
 
-# Create zip file with all necessary files
-$files = @(
-    "*.cs", "*.csproj", "*.cshtml", "Views/**/*", "Controllers/**/*", 
-    "Models/**/*", "wwwroot/**/*", "appsettings*.json"
-)
-
-# Use PowerShell to create zip (alternative to 7zip)
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $zipPath = Join-Path (Get-Location) "source.zip"
-$tempDir = Join-Path $env:TEMP "minesweeper-deploy"
 
-if (Test-Path $tempDir) {
-    Remove-Item $tempDir -Recurse -Force
-}
-New-Item -ItemType Directory -Path $tempDir | Out-Null
-
-# Copy files to temp directory
-Get-ChildItem -Path . -Include @("*.cs", "*.csproj") -Recurse | Copy-Item -Destination $tempDir
-if (Test-Path "Views") { Copy-Item "Views" -Destination $tempDir -Recurse }
-if (Test-Path "Controllers") { Copy-Item "Controllers" -Destination $tempDir -Recurse }
-if (Test-Path "Models") { Copy-Item "Models" -Destination $tempDir -Recurse }
-if (Test-Path "wwwroot") { Copy-Item "wwwroot" -Destination $tempDir -Recurse }
-
-[System.IO.Compression.ZipFile]::CreateFromDirectory($tempDir, $zipPath)
-Remove-Item $tempDir -Recurse -Force
+# Create zip from published files
+[System.IO.Compression.ZipFile]::CreateFromDirectory("publish", $zipPath)
 
 Write-Host "Source bundle created: source.zip" -ForegroundColor Green
 
@@ -159,5 +171,10 @@ if ($LASTEXITCODE -eq 0) {
 } else {
     Write-Error "Application deployment failed. Check Elastic Beanstalk console for details."
 }
+
+# Cleanup
+Write-Host "Cleaning up temporary files..." -ForegroundColor Yellow
+if (Test-Path "publish") { Remove-Item "publish" -Recurse -Force }
+if (Test-Path "source.zip") { Remove-Item "source.zip" }
 
 Write-Host "Deployment script completed." -ForegroundColor Green
