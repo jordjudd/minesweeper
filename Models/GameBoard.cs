@@ -9,11 +9,28 @@ public class GameBoard
     public GameStatus Status { get; set; }
     public bool IsInitialized { get; set; }
 
+    public Difficulty CurrentDifficulty { get; set; }
+
     public GameBoard(int rows, int cols, int mineCount)
     {
         Rows = rows;
         Cols = cols;
         MineCount = mineCount;
+        CurrentDifficulty = Difficulty.Easy; // Default
+        Board = new Cell[rows, cols];
+        Status = GameStatus.Playing;
+        IsInitialized = false;
+        InitializeBoard();
+        PlaceMinesRandomly(); // Place mines immediately
+    }
+
+    public GameBoard(Difficulty difficulty)
+    {
+        var (rows, cols, mines) = DifficultySettings.GetSettings(difficulty);
+        Rows = rows;
+        Cols = cols;
+        MineCount = mines;
+        CurrentDifficulty = difficulty;
         Board = new Cell[rows, cols];
         Status = GameStatus.Playing;
         IsInitialized = false;
@@ -206,4 +223,36 @@ public enum GameStatus
     Playing,
     Won,
     Lost
+}
+
+public enum Difficulty
+{
+    Easy,
+    Medium,
+    Hard
+}
+
+public static class DifficultySettings
+{
+    public static (int rows, int cols, int mines) GetSettings(Difficulty difficulty)
+    {
+        return difficulty switch
+        {
+            Difficulty.Easy => (9, 9, 10),     // Beginner: 9x9 with 10 mines
+            Difficulty.Medium => (16, 16, 40), // Intermediate: 16x16 with 40 mines
+            Difficulty.Hard => (16, 30, 99),   // Expert: 16x30 with 99 mines
+            _ => (9, 9, 10)
+        };
+    }
+    
+    public static string GetDisplayName(Difficulty difficulty)
+    {
+        return difficulty switch
+        {
+            Difficulty.Easy => "Easy (9x9, 10 mines)",
+            Difficulty.Medium => "Medium (16x16, 40 mines)",
+            Difficulty.Hard => "Hard (16x30, 99 mines)",
+            _ => "Easy"
+        };
+    }
 }

@@ -8,26 +8,41 @@
         body { font-family: Arial, sans-serif; margin: 20px; background-color: #f0f0f0; }
         .game-container { max-width: 600px; margin: 0 auto; text-align: center; }
         .game-info { margin: 20px 0; }
+        .difficulty-selector { 
+            margin: 10px 0; 
+        }
+        .difficulty-selector label {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .difficulty-selector select {
+            padding: 5px 10px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
         .game-board { 
             display: inline-block; 
             border: 3px solid #999; 
             background-color: #c0c0c0; 
             padding: 5px;
             box-sizing: border-box;
+            max-width: 95vw;
+            overflow-x: auto;
         }
         .cell { 
-            width: 32px; 
-            height: 32px; 
+            width: 24px; 
+            height: 24px; 
             border: 2px outset #c0c0c0; 
             background-color: #c0c0c0; 
             display: inline-block; 
             text-align: center; 
-            line-height: 28px; 
+            line-height: 20px; 
             font-weight: bold; 
             cursor: pointer; 
             user-select: none;
             box-sizing: border-box;
-            font-size: 14px;
+            font-size: 12px;
             vertical-align: top;
             margin: 0;
             padding: 0;
@@ -46,8 +61,8 @@
         }
         .row { 
             display: block; 
-            height: 32px; 
-            line-height: 32px;
+            height: 24px; 
+            line-height: 24px;
             margin: 0;
             padding: 0;
         }

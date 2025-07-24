@@ -4,6 +4,14 @@
 <h1>Minesweeper</h1>
 
 <div class="game-info">
+    <div class="difficulty-selector">
+        <label for="difficultySelect">Difficulty:</label>
+        <select id="difficultySelect" onchange="changeDifficulty()">
+            <option value="Easy" @(Model.CurrentDifficulty == Difficulty.Easy ? "selected" : "")>Easy (9x9, 10 mines)</option>
+            <option value="Medium" @(Model.CurrentDifficulty == Difficulty.Medium ? "selected" : "")>Medium (16x16, 40 mines)</option>
+            <option value="Hard" @(Model.CurrentDifficulty == Difficulty.Hard ? "selected" : "")>Hard (16x30, 99 mines)</option>
+        </select>
+    </div>
     <div class="status" id="gameStatus">
         @if (Model.Status == GameStatus.Playing)
         {
@@ -21,7 +29,7 @@
 </div>
 
 <div class="controls">
-    <button onclick="newGame()">New Game</button>
+    <button onclick="newGameWithCurrentDifficulty()">New Game</button>
     <button onclick="debugBoard()" style="background-color: #ff9800;">Debug Board</button>
 </div>
 
@@ -160,8 +168,9 @@
             }
         }
 
-        function updateGameStatus(status) {
+        function updateGameStatus(status, mineCount) {
             var statusElement = $('#gameStatus');
+            mineCount = mineCount || @Model.MineCount;
             
             if (status === 'Won') {
                 statusElement.html('<span class="won">You Won! 🎉</span>');
@@ -170,7 +179,7 @@
                 statusElement.html('<span class="lost">Game Over 💥</span>');
                 showGameOver('💥 Game Over! You hit a mine! 💥', 'lost');
             } else {
-                statusElement.html('<span>Playing - Mines: 10</span>');
+                statusElement.html('<span>Playing - Mines: ' + mineCount + '</span>');
             }
         }
 
@@ -186,14 +195,36 @@
 
         function startNewGame() {
             hideGameOver();
-            newGame();
+            newGameWithCurrentDifficulty();
+        }
+
+        function changeDifficulty() {
+            var difficulty = $('#difficultySelect').val();
+            window.location.href = '/?difficulty=' + difficulty;
+        }
+
+        function newGameWithCurrentDifficulty() {
+            var difficulty = $('#difficultySelect').val();
+            $.post('/Home/NewGame', { difficulty: difficulty }, function(data) {
+                if (data.success) {
+                    // Re-enable clicks and reload page for fresh game
+                    $('.cell').css('pointer-events', 'auto');
+                    window.location.href = '/?difficulty=' + difficulty;
+                } else {
+                    console.error('Error:', data.error);
+                    alert('Error: ' + data.error);
+                }
+            }).fail(function(xhr, status, error) {
+                console.error('AJAX Error:', error);
+                alert('Network error: ' + error);
+            });
         }
 
         function debugBoard() {
             $.get('/Home/GetBoardState', function(data) {
                 if (data.success) {
                     console.log('Board State:', data);
-                    alert('Check console for board state. Mines: ' + data.totalMines + '/' + data.expectedMines + ', Initialized: ' + data.isInitialized);
+                    alert('Check console for board state. Difficulty: ' + data.difficulty + ', Size: ' + data.rows + 'x' + data.cols + ', Mines: ' + data.totalMines + '/' + data.expectedMines + ', Initialized: ' + data.isInitialized);
                 } else {
                     console.error('Error:', data.error);
                     alert('Error: ' + data.error);

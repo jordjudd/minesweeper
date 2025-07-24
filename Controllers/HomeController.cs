@@ -12,18 +12,19 @@ public class HomeController : Controller
         _logger = logger;
     }
 
-    public IActionResult Index()
+    public IActionResult Index(Difficulty difficulty = Difficulty.Easy)
     {
         try
         {
-            var game = new GameBoard(9, 9, 10);
+            var game = new GameBoard(difficulty);
             HttpContext.Session.Set("game", game);
+            HttpContext.Session.SetString("difficulty", difficulty.ToString());
             return View(game);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in Index action");
-            var fallbackGame = new GameBoard(9, 9, 10);
+            var fallbackGame = new GameBoard(Difficulty.Easy);
             return View(fallbackGame);
         }
     }
@@ -35,7 +36,7 @@ public class HomeController : Controller
         {
             _logger.LogInformation($"RevealCell called with row={row}, col={col}");
             
-            var game = HttpContext.Session.Get<GameBoard>("game") ?? new GameBoard(9, 9, 10);
+            var game = HttpContext.Session.Get<GameBoard>("game") ?? new GameBoard(Difficulty.Easy);
             game.RevealCell(row, col);
             HttpContext.Session.Set("game", game);
             
@@ -83,7 +84,7 @@ public class HomeController : Controller
         {
             _logger.LogInformation($"ToggleFlag called with row={row}, col={col}");
             
-            var game = HttpContext.Session.Get<GameBoard>("game") ?? new GameBoard(9, 9, 10);
+            var game = HttpContext.Session.Get<GameBoard>("game") ?? new GameBoard(Difficulty.Easy);
             game.ToggleFlag(row, col);
             HttpContext.Session.Set("game", game);
             
@@ -104,16 +105,17 @@ public class HomeController : Controller
     }
 
     [HttpPost]
-    public IActionResult NewGame()
+    public IActionResult NewGame(Difficulty difficulty = Difficulty.Easy)
     {
         try
         {
-            _logger.LogInformation("NewGame called");
+            _logger.LogInformation($"NewGame called with difficulty: {difficulty}");
             
-            var game = new GameBoard(9, 9, 10);
+            var game = new GameBoard(difficulty);
             HttpContext.Session.Set("game", game);
+            HttpContext.Session.SetString("difficulty", difficulty.ToString());
             
-            return Json(new { success = true, message = "New game started" });
+            return Json(new { success = true, message = "New game started", difficulty = difficulty.ToString() });
         }
         catch (Exception ex)
         {
@@ -127,7 +129,7 @@ public class HomeController : Controller
     {
         try
         {
-            var game = HttpContext.Session.Get<GameBoard>("game") ?? new GameBoard(9, 9, 10);
+            var game = HttpContext.Session.Get<GameBoard>("game") ?? new GameBoard(Difficulty.Easy);
             
             // Create a simplified board state for the client
             var boardState = new List<object>();
@@ -158,7 +160,10 @@ public class HomeController : Controller
                 gameStatus = game.Status.ToString(),
                 isInitialized = game.IsInitialized,
                 totalMines = mineCount,
-                expectedMines = game.MineCount
+                expectedMines = game.MineCount,
+                difficulty = game.CurrentDifficulty.ToString(),
+                rows = game.Rows,
+                cols = game.Cols
             });
         }
         catch (Exception ex)
