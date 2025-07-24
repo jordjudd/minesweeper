@@ -2,52 +2,55 @@ namespace Minesweeper.Models;
 
 public class GameBoard
 {
-    public int Rows { get; set; }
-    public int Cols { get; set; }
-    public int MineCount { get; set; }
+    public int Rows { get; set; } = 9;
+    public int Cols { get; set; } = 9;
+    public int MineCount { get; set; } = 10;
     public Cell[,] Board { get; set; }
-    public GameStatus Status { get; set; }
-    public bool IsInitialized { get; set; }
-    public Difficulty CurrentDifficulty { get; set; }
+    public GameStatus Status { get; set; } = GameStatus.Playing;
+    public bool IsInitialized { get; set; } = true;
+    public Difficulty CurrentDifficulty { get; set; } = Difficulty.Easy;
 
     public GameBoard(Difficulty difficulty)
     {
-        var (rows, cols, mines) = DifficultySettings.GetSettings(difficulty);
-        Rows = rows;
-        Cols = cols;
-        MineCount = mines;
-        CurrentDifficulty = difficulty;
-        Board = new Cell[rows, cols];
-        Status = GameStatus.Playing;
-        IsInitialized = false;
+        // Force to Easy for now
+        Rows = 9;
+        Cols = 9;
+        MineCount = 10;
+        CurrentDifficulty = Difficulty.Easy;
         
-        InitializeBoard();
-        PlaceMines();
-        CalculateNumbers();
-        IsInitialized = true;
-    }
-
-    private void InitializeBoard()
-    {
-        for (int i = 0; i < Rows; i++)
+        // Initialize board
+        Board = new Cell[9, 9];
+        for (int i = 0; i < 9; i++)
         {
-            for (int j = 0; j < Cols; j++)
+            for (int j = 0; j < 9; j++)
             {
-                Board[i, j] = new Cell();
+                Board[i, j] = new Cell
+                {
+                    IsMine = false,
+                    IsRevealed = false,
+                    IsFlagged = false,
+                    AdjacentMines = 0
+                };
             }
         }
+        
+        // Place exactly 10 mines
+        PlaceMines();
+        
+        // Calculate numbers
+        CalculateNumbers();
     }
 
     private void PlaceMines()
     {
         var random = new Random();
         int minesPlaced = 0;
-
-        while (minesPlaced < MineCount)
+        
+        while (minesPlaced < 10)
         {
-            int row = random.Next(Rows);
-            int col = random.Next(Cols);
-
+            int row = random.Next(0, 9);
+            int col = random.Next(0, 9);
+            
             if (!Board[row, col].IsMine)
             {
                 Board[row, col].IsMine = true;
@@ -58,154 +61,138 @@ public class GameBoard
 
     private void CalculateNumbers()
     {
-        for (int i = 0; i < Rows; i++)
+        for (int row = 0; row < 9; row++)
         {
-            for (int j = 0; j < Cols; j++)
+            for (int col = 0; col < 9; col++)
             {
-                if (!Board[i, j].IsMine)
+                if (!Board[row, col].IsMine)
                 {
-                    Board[i, j].AdjacentMines = CountAdjacentMines(i, j);
+                    int count = 0;
+                    
+                    // Check all 8 adjacent cells
+                    for (int dr = -1; dr <= 1; dr++)
+                    {
+                        for (int dc = -1; dc <= 1; dc++)
+                        {
+                            if (dr == 0 && dc == 0) continue; // Skip center
+                            
+                            int newRow = row + dr;
+                            int newCol = col + dc;
+                            
+                            if (newRow >= 0 && newRow < 9 && newCol >= 0 && newCol < 9)
+                            {
+                                if (Board[newRow, newCol].IsMine)
+                                {
+                                    count++;
+                                }
+                            }
+                        }
+                    }
+                    
+                    Board[row, col].AdjacentMines = count;
                 }
             }
         }
-    }
-
-    private int CountAdjacentMines(int row, int col)
-    {
-        int count = 0;
-        
-        for (int i = row - 1; i <= row + 1; i++)
-        {
-            for (int j = col - 1; j <= col + 1; j++)
-            {
-                // Skip the center cell
-                if (i == row && j == col) continue;
-                
-                // Check if position is valid and has a mine
-                if (i >= 0 && i < Rows && j >= 0 && j < Cols && Board[i, j].IsMine)
-                {
-                    count++;
-                }
-            }
-        }
-        
-        return count;
     }
 
     public void RevealCell(int row, int col)
     {
-        if (!IsValidCell(row, col) || Board[row, col].IsRevealed || Board[row, col].IsFlagged || Status != GameStatus.Playing)
-            return;
+        // Basic validation
+        if (row < 0 || row >= 9 || col < 0 || col >= 9) return;
+        if (Board[row, col].IsRevealed) return;
+        if (Board[row, col].IsFlagged) return;
+        if (Status != GameStatus.Playing) return;
 
-        Board[row, col].IsRevealed = true;
-
+        // Check if it's a mine
         if (Board[row, col].IsMine)
         {
+            Board[row, col].IsRevealed = true;
             Status = GameStatus.Lost;
-            RevealAllMines();
-            return;
-        }
-
-        // Only cascade if this cell has no adjacent mines
-        if (Board[row, col].AdjacentMines == 0)
-        {
-            RevealAdjacentSafeCells(row, col);
-        }
-
-        CheckWinCondition();
-    }
-
-    private void RevealAdjacentSafeCells(int row, int col)
-    {
-        for (int i = row - 1; i <= row + 1; i++)
-        {
-            for (int j = col - 1; j <= col + 1; j++)
+            
+            // Reveal all mines when game is lost
+            for (int i = 0; i < 9; i++)
             {
-                // Skip the center cell
-                if (i == row && j == col) continue;
-                
-                // Check if position is valid
-                if (!IsValidCell(i, j)) continue;
-                
-                var cell = Board[i, j];
-                
-                // ONLY reveal if: NOT a mine, NOT already revealed, NOT flagged
-                if (!cell.IsMine && !cell.IsRevealed && !cell.IsFlagged)
+                for (int j = 0; j < 9; j++)
                 {
-                    cell.IsRevealed = true;
-                    
-                    // Continue cascade only if this cell also has no adjacent mines
-                    if (cell.AdjacentMines == 0)
+                    if (Board[i, j].IsMine)
                     {
-                        RevealAdjacentSafeCells(i, j);
+                        Board[i, j].IsRevealed = true;
                     }
                 }
             }
+            return;
         }
-    }
 
-    private void RevealAllMines()
-    {
-        for (int i = 0; i < Rows; i++)
-        {
-            for (int j = 0; j < Cols; j++)
-            {
-                if (Board[i, j].IsMine)
-                {
-                    Board[i, j].IsRevealed = true;
-                }
-            }
-        }
+        // Only reveal this single cell - NO CASCADE
+        Board[row, col].IsRevealed = true;
+
+        // Check win condition
+        CheckWinCondition();
     }
 
     public void ToggleFlag(int row, int col)
     {
-        if (!IsValidCell(row, col) || Board[row, col].IsRevealed || Status != GameStatus.Playing)
-            return;
+        if (row < 0 || row >= 9 || col < 0 || col >= 9) return;
+        if (Board[row, col].IsRevealed) return;
+        if (Status != GameStatus.Playing) return;
 
         Board[row, col].IsFlagged = !Board[row, col].IsFlagged;
     }
 
     private void CheckWinCondition()
     {
-        int revealedCount = 0;
-        for (int i = 0; i < Rows; i++)
+        int revealedSafeCells = 0;
+        for (int i = 0; i < 9; i++)
         {
-            for (int j = 0; j < Cols; j++)
+            for (int j = 0; j < 9; j++)
             {
                 if (Board[i, j].IsRevealed && !Board[i, j].IsMine)
                 {
-                    revealedCount++;
+                    revealedSafeCells++;
                 }
             }
         }
 
-        if (revealedCount == (Rows * Cols - MineCount))
+        if (revealedSafeCells == (81 - 10)) // 9x9 - 10 mines = 71 safe cells
         {
             Status = GameStatus.Won;
         }
-    }
-
-    private bool IsValidCell(int row, int col)
-    {
-        return row >= 0 && row < Rows && col >= 0 && col < Cols;
     }
 
     public List<string> ValidateBoard()
     {
         var errors = new List<string>();
         
-        for (int i = 0; i < Rows; i++)
+        for (int i = 0; i < 9; i++)
         {
-            for (int j = 0; j < Cols; j++)
+            for (int j = 0; j < 9; j++)
             {
-                var cell = Board[i, j];
-                if (!cell.IsMine)
+                if (!Board[i, j].IsMine)
                 {
-                    int actualCount = CountAdjacentMines(i, j);
-                    if (cell.AdjacentMines != actualCount)
+                    int actualCount = 0;
+                    
+                    for (int dr = -1; dr <= 1; dr++)
                     {
-                        errors.Add($"Cell ({i},{j}): Expected {actualCount} adjacent mines, but has {cell.AdjacentMines}");
+                        for (int dc = -1; dc <= 1; dc++)
+                        {
+                            if (dr == 0 && dc == 0) continue;
+                            
+                            int newRow = i + dr;
+                            int newCol = j + dc;
+                            
+                            if (newRow >= 0 && newRow < 9 && newCol >= 0 && newCol < 9)
+                            {
+                                if (Board[newRow, newCol].IsMine)
+                                {
+                                    actualCount++;
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (Board[i, j].AdjacentMines != actualCount)
+                    {
+                        errors.Add($"Cell ({i},{j}): Expected {actualCount} adjacent mines, but has {Board[i, j].AdjacentMines}");
                     }
                 }
             }

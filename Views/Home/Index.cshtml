@@ -30,6 +30,7 @@
     <button onclick="newGameWithCurrentDifficulty()">New Game</button>
     <button onclick="debugBoard()" style="background-color: #ff9800;">Debug Board</button>
     <button onclick="showAllMines()" style="background-color: #e91e63; color: white;">Show All Mines</button>
+    <button onclick="testReveal()" style="background-color: #9c27b0; color: white;">Test Reveal</button>
 </div>
 
 <div class="game-board" id="gameBoard">
@@ -84,8 +85,21 @@
                     
                     // Update all revealed cells
                     if (data.revealedCells) {
+                        console.log('Updating ' + data.revealedCells.length + ' cells');
+                        
+                        // Check for mines in the revealed cells (should be 0)
+                        var minesInRevealedCells = data.revealedCells.filter(function(cell) {
+                            return cell.isMine;
+                        });
+                        
+                        if (minesInRevealedCells.length > 0) {
+                            console.error('CRITICAL ERROR: Server sent mines in revealed cells!', minesInRevealedCells);
+                        } else {
+                            console.log('✅ Server correctly sent 0 mines in revealed cells');
+                        }
+                        
                         data.revealedCells.forEach(function(cellData) {
-                            updateCell(cellData.row, cellData.col, cellData);
+                            updateCellSafely(cellData.row, cellData.col, cellData);
                         });
                     }
                     
@@ -139,22 +153,40 @@
             });
         }
 
-        function updateCell(row, col, data) {
+        function updateCellSafely(row, col, data) {
             var cell = $('[data-row="' + row + '"][data-col="' + col + '"]');
             
+            // CRITICAL: Never display mines during cascade (server should never send them)
+            if (data.isMine) {
+                console.error('🚨 CRITICAL: Server sent a mine during cascade at (' + row + ',' + col + ')', data);
+                return; // Don't update mine cells during cascade
+            }
+            
             if (data.isRevealed) {
-                cell.addClass('revealed');
-                cell.removeClass('flagged');
+                // Clear any previous styling first
+                cell.removeClass('mine mine-debug flagged');
+                cell.css({
+                    'background-color': '',
+                    'border': ''
+                });
                 
-                if (data.isMine) {
-                    cell.addClass('mine');
-                    cell.text('💣');
-                } else if (data.adjacentMines > 0) {
+                // Add revealed styling
+                cell.addClass('revealed');
+                
+                // Only show numbers for safe cells
+                if (data.adjacentMines > 0) {
                     cell.text(data.adjacentMines);
                 } else {
                     cell.text('');
                 }
+                
+                console.log('✅ Updated safe cell (' + row + ',' + col + ') with ' + data.adjacentMines + ' adjacent mines');
             }
+        }
+
+        // Keep the old function for compatibility
+        function updateCell(row, col, data) {
+            updateCellSafely(row, col, data);
         }
 
         function updateCellFlag(row, col, isFlagged) {
@@ -242,8 +274,7 @@
         function newGameWithCurrentDifficulty() {
             $.post('/Home/NewGame', function(data) {
                 if (data.success) {
-                    // Re-enable clicks and reload page for fresh game
-                    $('.cell').css('pointer-events', 'auto');
+                    // Just reload the page for a completely fresh start
                     location.reload();
                 } else {
                     console.error('Error:', data.error);
@@ -339,6 +370,28 @@
                     });
                     
                     alert('All ' + data.minePositions.length + ' mines are now visible with pink background and red border.\nClick "New Game" to reset.');
+                } else {
+                    console.error('Error:', data.error);
+                    alert('Error: ' + data.error);
+                }
+            }).fail(function(xhr, status, error) {
+                console.error('AJAX Error:', error);
+                alert('Network error: ' + error);
+            });
+        }
+
+        function testReveal() {
+            // Test revealing a safe cell (middle of board)
+            $.post('/Home/TestReveal', { row: 4, col: 4 }, function(data) {
+                if (data.success) {
+                    console.log('Test reveal result:', data);
+                    var message = 'Test Reveal Results:\n' +
+                                 'Clicked: (' + data.clickedCell.row + ',' + data.clickedCell.col + ')\n' +
+                                 'Was Mine: ' + data.clickedCell.wasMine + '\n' +
+                                 'Adjacent Mines: ' + data.clickedCell.adjacentMines + '\n' +
+                                 'Total Revealed Mines: ' + data.revealedMines + '\n' +
+                                 'Status: ' + data.message;
+                    alert(message);
                 } else {
                     console.error('Error:', data.error);
                     alert('Error: ' + data.error);
