@@ -18,6 +18,7 @@ public class GameBoard
         Status = GameStatus.Playing;
         IsInitialized = false;
         InitializeBoard();
+        PlaceMinesRandomly(); // Place mines immediately
     }
 
     private void InitializeBoard()
@@ -31,8 +32,30 @@ public class GameBoard
         }
     }
 
+    private void PlaceMinesRandomly()
+    {
+        var random = new Random();
+        int minesPlaced = 0;
+
+        while (minesPlaced < MineCount)
+        {
+            int row = random.Next(Rows);
+            int col = random.Next(Cols);
+
+            if (!Board[row, col].IsMine)
+            {
+                Board[row, col].IsMine = true;
+                minesPlaced++;
+            }
+        }
+
+        CalculateNumbers();
+        IsInitialized = true;
+    }
+
     private void PlaceMines(int firstRow, int firstCol)
     {
+        // This method is no longer used, but keeping for compatibility
         var random = new Random();
         int minesPlaced = 0;
 
@@ -88,11 +111,6 @@ public class GameBoard
     {
         if (!IsValidCell(row, col) || Board[row, col].IsRevealed || Board[row, col].IsFlagged || Status != GameStatus.Playing)
             return;
-
-        if (!IsInitialized)
-        {
-            PlaceMines(row, col);
-        }
 
         Board[row, col].IsRevealed = true;
 
