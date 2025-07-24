@@ -34,7 +34,7 @@ Parameters:
   
   SolutionStackName:
     Type: String
-    Default: '64bit Amazon Linux 2023 v3.5.1 running .NET 8'
+    Default: '64bit Amazon Linux 2023 v3.5.1 running .NET 9'
     Description: 'Elastic Beanstalk solution stack name for .NET'
 
 Resources:
