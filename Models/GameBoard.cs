@@ -154,9 +154,15 @@ public class GameBoard
             {
                 int newRow = row + i;
                 int newCol = col + j;
-                if (IsValidCell(newRow, newCol) && !Board[newRow, newCol].IsRevealed)
+                if (IsValidCell(newRow, newCol) && !Board[newRow, newCol].IsRevealed && !Board[newRow, newCol].IsFlagged && !Board[newRow, newCol].IsMine)
                 {
-                    RevealCell(newRow, newCol);
+                    Board[newRow, newCol].IsRevealed = true;
+                    
+                    // If this cell also has no adjacent mines, continue the cascade
+                    if (Board[newRow, newCol].AdjacentMines == 0)
+                    {
+                        RevealAdjacentCells(newRow, newCol);
+                    }
                 }
             }
         }
