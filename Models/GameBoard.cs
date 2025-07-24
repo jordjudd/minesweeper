@@ -98,9 +98,15 @@ public class GameBoard
         {
             for (int j = 0; j < Cols; j++)
             {
-                if (!Board[i, j].IsMine)
+                var cell = Board[i, j];
+                if (!cell.IsMine)
                 {
-                    Board[i, j].AdjacentMines = CountAdjacentMines(i, j);
+                    cell.AdjacentMines = CountAdjacentMines(i, j);
+                }
+                else
+                {
+                    // Ensure mines have 0 adjacent count (shouldn't matter but for safety)
+                    cell.AdjacentMines = 0;
                 }
             }
         }
@@ -126,23 +132,30 @@ public class GameBoard
 
     public void RevealCell(int row, int col)
     {
+        // Validate input and game state
         if (!IsValidCell(row, col) || Board[row, col].IsRevealed || Board[row, col].IsFlagged || Status != GameStatus.Playing)
             return;
 
-        Board[row, col].IsRevealed = true;
+        var cell = Board[row, col];
+        
+        // Reveal the clicked cell
+        cell.IsRevealed = true;
 
-        if (Board[row, col].IsMine)
+        // If it's a mine, game over
+        if (cell.IsMine)
         {
             Status = GameStatus.Lost;
             RevealAllMines();
             return;
         }
 
-        if (Board[row, col].AdjacentMines == 0)
+        // If it has no adjacent mines, start cascade reveal
+        if (cell.AdjacentMines == 0)
         {
             RevealAdjacentCells(row, col);
         }
 
+        // Check if player won
         CheckWinCondition();
     }
 
@@ -154,12 +167,20 @@ public class GameBoard
             {
                 int newRow = row + i;
                 int newCol = col + j;
-                if (IsValidCell(newRow, newCol) && !Board[newRow, newCol].IsRevealed && !Board[newRow, newCol].IsFlagged && !Board[newRow, newCol].IsMine)
+                
+                // Skip the center cell and ensure we're within bounds
+                if ((i == 0 && j == 0) || !IsValidCell(newRow, newCol))
+                    continue;
+                
+                var cell = Board[newRow, newCol];
+                
+                // Only reveal if: not already revealed, not flagged, and NOT a mine
+                if (!cell.IsRevealed && !cell.IsFlagged && !cell.IsMine)
                 {
-                    Board[newRow, newCol].IsRevealed = true;
+                    cell.IsRevealed = true;
                     
-                    // If this cell also has no adjacent mines, continue the cascade
-                    if (Board[newRow, newCol].AdjacentMines == 0)
+                    // If this cell has no adjacent mines, continue the cascade
+                    if (cell.AdjacentMines == 0)
                     {
                         RevealAdjacentCells(newRow, newCol);
                     }

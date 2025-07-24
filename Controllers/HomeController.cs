@@ -12,13 +12,12 @@ public class HomeController : Controller
         _logger = logger;
     }
 
-    public IActionResult Index(Difficulty difficulty = Difficulty.Easy)
+    public IActionResult Index()
     {
         try
         {
-            var game = new GameBoard(difficulty);
+            var game = new GameBoard(Difficulty.Easy);
             HttpContext.Session.Set("game", game);
-            HttpContext.Session.SetString("difficulty", difficulty.ToString());
             return View(game);
         }
         catch (Exception ex)
@@ -105,17 +104,16 @@ public class HomeController : Controller
     }
 
     [HttpPost]
-    public IActionResult NewGame(Difficulty difficulty = Difficulty.Easy)
+    public IActionResult NewGame()
     {
         try
         {
-            _logger.LogInformation($"NewGame called with difficulty: {difficulty}");
+            _logger.LogInformation("NewGame called");
             
-            var game = new GameBoard(difficulty);
+            var game = new GameBoard(Difficulty.Easy);
             HttpContext.Session.Set("game", game);
-            HttpContext.Session.SetString("difficulty", difficulty.ToString());
             
-            return Json(new { success = true, message = "New game started", difficulty = difficulty.ToString() });
+            return Json(new { success = true, message = "New game started" });
         }
         catch (Exception ex)
         {

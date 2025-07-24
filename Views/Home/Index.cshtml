@@ -8,8 +8,6 @@
         <label for="difficultySelect">Difficulty:</label>
         <select id="difficultySelect" onchange="changeDifficulty()">
             <option value="Easy" selected="@(Model.CurrentDifficulty == Difficulty.Easy)">Easy (9x9, 10 mines)</option>
-            <option value="Medium" selected="@(Model.CurrentDifficulty == Difficulty.Medium)">Medium (16x16, 40 mines)</option>
-            <option value="Hard" selected="@(Model.CurrentDifficulty == Difficulty.Hard)">Hard (16x30, 99 mines)</option>
         </select>
     </div>
     <div class="status" id="gameStatus">
@@ -199,17 +197,16 @@
         }
 
         function changeDifficulty() {
-            var difficulty = $('#difficultySelect').val();
-            window.location.href = '/?difficulty=' + difficulty;
+            // Only Easy mode for now
+            location.reload();
         }
 
         function newGameWithCurrentDifficulty() {
-            var difficulty = $('#difficultySelect').val();
-            $.post('/Home/NewGame', { difficulty: difficulty }, function(data) {
+            $.post('/Home/NewGame', function(data) {
                 if (data.success) {
                     // Re-enable clicks and reload page for fresh game
                     $('.cell').css('pointer-events', 'auto');
-                    window.location.href = '/?difficulty=' + difficulty;
+                    location.reload();
                 } else {
                     console.error('Error:', data.error);
                     alert('Error: ' + data.error);
