@@ -15,12 +15,19 @@ public static class SessionExtensions
     {
         try
         {
-            session.SetString(key, JsonSerializer.Serialize(value, JsonOptions));
+            var json = JsonSerializer.Serialize(value, JsonOptions);
+            Console.WriteLine($"✅ Session serialization successful for key '{key}', JSON length: {json.Length}");
+            session.SetString(key, json);
         }
         catch (Exception ex)
         {
             // Log error and continue without session
-            Console.WriteLine($"Session serialization error: {ex.Message}");
+            Console.WriteLine($"❌ Session serialization error for key '{key}': {ex.Message}");
+            Console.WriteLine($"❌ Exception type: {ex.GetType().Name}");
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine($"❌ Inner exception: {ex.InnerException.Message}");
+            }
         }
     }
 
@@ -29,12 +36,24 @@ public static class SessionExtensions
         try
         {
             var value = session.GetString(key);
-            return value == null ? default : JsonSerializer.Deserialize<T>(value, JsonOptions);
+            if (value == null)
+            {
+                Console.WriteLine($"⚠️ Session key '{key}' not found or is null");
+                return default;
+            }
+            
+            Console.WriteLine($"✅ Session deserialization successful for key '{key}', JSON length: {value.Length}");
+            return JsonSerializer.Deserialize<T>(value, JsonOptions);
         }
         catch (Exception ex)
         {
             // Log error and return default
-            Console.WriteLine($"Session deserialization error: {ex.Message}");
+            Console.WriteLine($"❌ Session deserialization error for key '{key}': {ex.Message}");
+            Console.WriteLine($"❌ Exception type: {ex.GetType().Name}");
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine($"❌ Inner exception: {ex.InnerException.Message}");
+            }
             return default;
         }
     }

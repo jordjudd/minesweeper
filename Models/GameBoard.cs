@@ -5,26 +5,28 @@ public class GameBoard
     public int Rows { get; set; } = 9;
     public int Cols { get; set; } = 9;
     public int MineCount { get; set; } = 10;
-    public Cell[,] Board { get; set; }
+    public Cell[][] Board { get; set; }
     public GameStatus Status { get; set; } = GameStatus.Playing;
     public bool IsInitialized { get; set; } = true;
     public Difficulty CurrentDifficulty { get; set; } = Difficulty.Easy;
 
     public GameBoard(Difficulty difficulty)
     {
-        // Force to Easy for now
-        Rows = 9;
-        Cols = 9;
-        MineCount = 10;
-        CurrentDifficulty = Difficulty.Easy;
+        // Set difficulty settings
+        var settings = DifficultySettings.GetSettings(difficulty);
+        Rows = settings.rows;
+        Cols = settings.cols;
+        MineCount = settings.mines;
+        CurrentDifficulty = difficulty;
         
         // Initialize board
-        Board = new Cell[9, 9];
-        for (int i = 0; i < 9; i++)
+        Board = new Cell[Rows][];
+        for (int i = 0; i < Rows; i++)
         {
-            for (int j = 0; j < 9; j++)
+            Board[i] = new Cell[Cols];
+            for (int j = 0; j < Cols; j++)
             {
-                Board[i, j] = new Cell
+                Board[i][j] = new Cell
                 {
                     IsMine = false,
                     IsRevealed = false,
@@ -34,7 +36,7 @@ public class GameBoard
             }
         }
         
-        // Place exactly 10 mines
+        // Place mines
         PlaceMines();
         
         // Calculate numbers
@@ -46,14 +48,14 @@ public class GameBoard
         var random = new Random();
         int minesPlaced = 0;
         
-        while (minesPlaced < 10)
+        while (minesPlaced < MineCount)
         {
-            int row = random.Next(0, 9);
-            int col = random.Next(0, 9);
+            int row = random.Next(0, Rows);
+            int col = random.Next(0, Cols);
             
-            if (!Board[row, col].IsMine)
+            if (!Board[row][col].IsMine)
             {
-                Board[row, col].IsMine = true;
+                Board[row][col].IsMine = true;
                 minesPlaced++;
             }
         }
@@ -61,11 +63,12 @@ public class GameBoard
 
     private void CalculateNumbers()
     {
-        for (int row = 0; row < 9; row++)
+        for (int row = 0; row < Rows; row++)
         {
-            for (int col = 0; col < 9; col++)
+            for (int col = 0; col < Cols; col++)
             {
-                if (!Board[row, col].IsMine)
+                // Only calculate numbers for non-mine cells
+                if (!Board[row][col].IsMine)
                 {
                     int count = 0;
                     
@@ -74,14 +77,15 @@ public class GameBoard
                     {
                         for (int dc = -1; dc <= 1; dc++)
                         {
-                            if (dr == 0 && dc == 0) continue; // Skip center
+                            if (dr == 0 && dc == 0) continue; // Skip center cell
                             
                             int newRow = row + dr;
                             int newCol = col + dc;
                             
-                            if (newRow >= 0 && newRow < 9 && newCol >= 0 && newCol < 9)
+                            // Check bounds properly
+                            if (newRow >= 0 && newRow < Rows && newCol >= 0 && newCol < Cols)
                             {
-                                if (Board[newRow, newCol].IsMine)
+                                if (Board[newRow][newCol].IsMine)
                                 {
                                     count++;
                                 }
@@ -89,7 +93,12 @@ public class GameBoard
                         }
                     }
                     
-                    Board[row, col].AdjacentMines = count;
+                    Board[row][col].AdjacentMines = count;
+                }
+                else
+                {
+                    // Mines should have AdjacentMines = 0 (not used, but for clarity)
+                    Board[row][col].AdjacentMines = 0;
                 }
             }
         }
@@ -98,62 +107,107 @@ public class GameBoard
     public void RevealCell(int row, int col)
     {
         // Basic validation
-        if (row < 0 || row >= 9 || col < 0 || col >= 9) return;
-        if (Board[row, col].IsRevealed) return;
-        if (Board[row, col].IsFlagged) return;
+        if (row < 0 || row >= Rows || col < 0 || col >= Cols) return;
+        if (Board[row][col].IsRevealed) return;
+        if (Board[row][col].IsFlagged) return;
         if (Status != GameStatus.Playing) return;
 
         // Check if it's a mine
-        if (Board[row, col].IsMine)
+        if (Board[row][col].IsMine)
         {
-            Board[row, col].IsRevealed = true;
+            Board[row][col].IsRevealed = true;
             Status = GameStatus.Lost;
             
             // Reveal all mines when game is lost
-            for (int i = 0; i < 9; i++)
+            for (int i = 0; i < Rows; i++)
             {
-                for (int j = 0; j < 9; j++)
+                for (int j = 0; j < Cols; j++)
                 {
-                    if (Board[i, j].IsMine)
+                    if (Board[i][j].IsMine)
                     {
-                        Board[i, j].IsRevealed = true;
+                        Board[i][j].IsRevealed = true;
                     }
                 }
             }
             return;
         }
 
-        // Only reveal this single cell - NO CASCADE
-        Board[row, col].IsRevealed = true;
+        // Reveal this cell and cascade if it has 0 adjacent mines
+        RevealCellRecursive(row, col);
+
+        // Verify mine integrity after cascade
+        VerifyMineIntegrity();
 
         // Check win condition
         CheckWinCondition();
     }
 
+    private void RevealCellRecursive(int row, int col)
+    {
+        // Basic validation - check bounds first
+        if (row < 0 || row >= Rows || col < 0 || col >= Cols) return;
+        
+        // CRITICAL: Check if this is a mine FIRST - never reveal mines during cascade
+        if (Board[row][col].IsMine) 
+        {
+            // Log this as it should never happen during normal cascade
+            Console.WriteLine($"🚨 CRITICAL: Attempted to reveal mine at ({row},{col}) during cascade - BLOCKED");
+            return;
+        }
+        
+        // Don't reveal if already revealed or flagged
+        if (Board[row][col].IsRevealed) return;
+        if (Board[row][col].IsFlagged) return;
+
+        // Reveal this cell (only safe cells get here)
+        Console.WriteLine($"✅ Revealing safe cell at ({row},{col}) with {Board[row][col].AdjacentMines} adjacent mines");
+        Board[row][col].IsRevealed = true;
+
+        // If this cell has 0 adjacent mines, cascade to reveal adjacent cells
+        if (Board[row][col].AdjacentMines == 0)
+        {
+            Console.WriteLine($"🔄 Cascading from ({row},{col}) - has 0 adjacent mines");
+            for (int dr = -1; dr <= 1; dr++)
+            {
+                for (int dc = -1; dc <= 1; dc++)
+                {
+                    if (dr == 0 && dc == 0) continue; // Skip center cell
+                    
+                    int newRow = row + dr;
+                    int newCol = col + dc;
+                    
+                    // Recursively reveal adjacent cells (they will be checked for mines)
+                    RevealCellRecursive(newRow, newCol);
+                }
+            }
+        }
+    }
+
     public void ToggleFlag(int row, int col)
     {
-        if (row < 0 || row >= 9 || col < 0 || col >= 9) return;
-        if (Board[row, col].IsRevealed) return;
+        if (row < 0 || row >= Rows || col < 0 || col >= Cols) return;
+        if (Board[row][col].IsRevealed) return;
         if (Status != GameStatus.Playing) return;
 
-        Board[row, col].IsFlagged = !Board[row, col].IsFlagged;
+        Board[row][col].IsFlagged = !Board[row][col].IsFlagged;
     }
 
     private void CheckWinCondition()
     {
         int revealedSafeCells = 0;
-        for (int i = 0; i < 9; i++)
+        for (int i = 0; i < Rows; i++)
         {
-            for (int j = 0; j < 9; j++)
+            for (int j = 0; j < Cols; j++)
             {
-                if (Board[i, j].IsRevealed && !Board[i, j].IsMine)
+                if (Board[i][j].IsRevealed && !Board[i][j].IsMine)
                 {
                     revealedSafeCells++;
                 }
             }
         }
 
-        if (revealedSafeCells == (81 - 10)) // 9x9 - 10 mines = 71 safe cells
+        int totalSafeCells = (Rows * Cols) - MineCount;
+        if (revealedSafeCells == totalSafeCells)
         {
             Status = GameStatus.Won;
         }
@@ -163,11 +217,33 @@ public class GameBoard
     {
         var errors = new List<string>();
         
-        for (int i = 0; i < 9; i++)
+        // First, count actual mines on the board
+        int actualMineCount = 0;
+        var minePositions = new List<string>();
+        
+        for (int i = 0; i < Rows; i++)
         {
-            for (int j = 0; j < 9; j++)
+            for (int j = 0; j < Cols; j++)
             {
-                if (!Board[i, j].IsMine)
+                if (Board[i][j].IsMine)
+                {
+                    actualMineCount++;
+                    minePositions.Add($"({i},{j})");
+                }
+            }
+        }
+        
+        if (actualMineCount != MineCount)
+        {
+            errors.Add($"Expected {MineCount} mines, but found {actualMineCount} mines at positions: {string.Join(", ", minePositions)}");
+        }
+        
+        // Then validate number calculations for non-mine cells
+        for (int i = 0; i < Rows; i++)
+        {
+            for (int j = 0; j < Cols; j++)
+            {
+                if (!Board[i][j].IsMine)
                 {
                     int actualCount = 0;
                     
@@ -175,14 +251,14 @@ public class GameBoard
                     {
                         for (int dc = -1; dc <= 1; dc++)
                         {
-                            if (dr == 0 && dc == 0) continue;
+                            if (dr == 0 && dc == 0) continue; // Skip center cell
                             
                             int newRow = i + dr;
                             int newCol = j + dc;
                             
-                            if (newRow >= 0 && newRow < 9 && newCol >= 0 && newCol < 9)
+                            if (newRow >= 0 && newRow < Rows && newCol >= 0 && newCol < Cols)
                             {
-                                if (Board[newRow, newCol].IsMine)
+                                if (Board[newRow][newCol].IsMine)
                                 {
                                     actualCount++;
                                 }
@@ -190,15 +266,143 @@ public class GameBoard
                         }
                     }
                     
-                    if (Board[i, j].AdjacentMines != actualCount)
+                    if (Board[i][j].AdjacentMines != actualCount)
                     {
-                        errors.Add($"Cell ({i},{j}): Expected {actualCount} adjacent mines, but has {Board[i, j].AdjacentMines}");
+                        errors.Add($"Cell ({i},{j}): Expected {actualCount} adjacent mines, but has {Board[i][j].AdjacentMines}");
                     }
                 }
             }
         }
         
         return errors;
+    }
+
+    public int GetActualMineCount()
+    {
+        int count = 0;
+        for (int i = 0; i < Rows; i++)
+        {
+            for (int j = 0; j < Cols; j++)
+            {
+                if (Board[i][j].IsMine)
+                {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    public List<(int row, int col)> GetMinePositions()
+    {
+        var positions = new List<(int row, int col)>();
+        for (int i = 0; i < Rows; i++)
+        {
+            for (int j = 0; j < Cols; j++)
+            {
+                if (Board[i][j].IsMine)
+                {
+                    positions.Add((i, j));
+                }
+            }
+        }
+        return positions;
+    }
+
+    public void VerifyMineIntegrity()
+    {
+        Console.WriteLine("=== MINE INTEGRITY CHECK ===");
+        int mineCount = 0;
+        for (int i = 0; i < Rows; i++)
+        {
+            for (int j = 0; j < Cols; j++)
+            {
+                if (Board[i][j].IsMine)
+                {
+                    mineCount++;
+                    Console.WriteLine($"Mine at ({i},{j}): IsRevealed={Board[i][j].IsRevealed}, AdjacentMines={Board[i][j].AdjacentMines}");
+                }
+            }
+        }
+        Console.WriteLine($"Total mines found: {mineCount}/{MineCount}");
+    }
+
+    public List<object> GetDetailedMineInfo()
+    {
+        var mineInfo = new List<object>();
+        for (int i = 0; i < Rows; i++)
+        {
+            for (int j = 0; j < Cols; j++)
+            {
+                if (Board[i][j].IsMine)
+                {
+                    mineInfo.Add(new
+                    {
+                        row = i,
+                        col = j,
+                        isRevealed = Board[i][j].IsRevealed,
+                        isFlagged = Board[i][j].IsFlagged,
+                        status = Board[i][j].IsRevealed ? "REVEALED" : 
+                                Board[i][j].IsFlagged ? "FLAGGED" : "HIDDEN"
+                    });
+                }
+            }
+        }
+        return mineInfo;
+    }
+
+    public object GetBoardStatistics()
+    {
+        int totalCells = Rows * Cols;
+        int revealedCells = 0;
+        int revealedMines = 0;
+        int revealedSafeCells = 0;
+        int flaggedCells = 0;
+        int flaggedMines = 0;
+        int hiddenCells = 0;
+
+        for (int i = 0; i < Rows; i++)
+        {
+            for (int j = 0; j < Cols; j++)
+            {
+                var cell = Board[i][j];
+                
+                if (cell.IsRevealed)
+                {
+                    revealedCells++;
+                    if (cell.IsMine)
+                        revealedMines++;
+                    else
+                        revealedSafeCells++;
+                }
+                else
+                {
+                    hiddenCells++;
+                }
+
+                if (cell.IsFlagged)
+                {
+                    flaggedCells++;
+                    if (cell.IsMine)
+                        flaggedMines++;
+                }
+            }
+        }
+
+        return new
+        {
+            totalCells,
+            totalMines = MineCount,
+            totalSafeCells = totalCells - MineCount,
+            revealedCells,
+            revealedMines,
+            revealedSafeCells,
+            hiddenCells,
+            flaggedCells,
+            flaggedMines,
+            correctFlags = flaggedMines,
+            incorrectFlags = flaggedCells - flaggedMines
+        };
     }
 }
 

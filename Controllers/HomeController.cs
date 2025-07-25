@@ -6,6 +6,7 @@ namespace Minesweeper.Controllers;
 public class HomeController : Controller
 {
     private readonly ILogger<HomeController> _logger;
+    private static GameBoard? _staticGame; // Temporary static storage for testing
 
     public HomeController(ILogger<HomeController> logger)
     {
@@ -36,14 +37,38 @@ public class HomeController : Controller
         {
             _logger.LogInformation($"RevealCell called with row={row}, col={col}");
             
-            var game = HttpContext.Session.Get<GameBoard>("game") ?? new GameBoard(Difficulty.Easy);
+            // Use static storage for testing instead of session
+            var game = _staticGame ?? new GameBoard(Difficulty.Easy);
+            if (_staticGame == null)
+            {
+                _staticGame = game;
+                _logger.LogInformation("Created new static game");
+            }
+            else
+            {
+                _logger.LogInformation("Using existing static game");
+            }
             
             // Log the cell state before revealing
-            var cellBefore = game.Board[row, col];
+            var cellBefore = game.Board[row][col];
             _logger.LogInformation($"Cell ({row},{col}) before reveal: IsMine={cellBefore.IsMine}, IsRevealed={cellBefore.IsRevealed}, AdjacentMines={cellBefore.AdjacentMines}");
             
             game.RevealCell(row, col);
-            HttpContext.Session.Set("game", game);
+            
+            // Debug: Check revealed cells before saving to session
+            int revealedCount = 0;
+            for (int i = 0; i < game.Rows; i++)
+            {
+                for (int j = 0; j < game.Cols; j++)
+                {
+                    if (game.Board[i][j].IsRevealed) revealedCount++;
+                }
+            }
+            _logger.LogInformation($"Before saving to session: {revealedCount} cells revealed");
+            
+            // Update static game
+            _staticGame = game;
+            _logger.LogInformation("Updated static game");
             
             // Log any mines that got revealed (this should never happen)
             var revealedMines = new List<object>();
@@ -51,7 +76,7 @@ public class HomeController : Controller
             {
                 for (int j = 0; j < game.Cols; j++)
                 {
-                    var cell = game.Board[i, j];
+                    var cell = game.Board[i][j];
                     if (cell.IsRevealed && cell.IsMine)
                     {
                         revealedMines.Add(new { row = i, col = j });
@@ -64,15 +89,23 @@ public class HomeController : Controller
                 _logger.LogError($"MINES REVEALED DURING CASCADE: {string.Join(", ", revealedMines.Select(m => $"({((dynamic)m).row},{((dynamic)m).col})"))}");
             }
             
-            // Create a list of all revealed cells to update the UI
+            // Create a list of revealed cells to update the UI
             var revealedCells = new List<object>();
             for (int i = 0; i < game.Rows; i++)
             {
                 for (int j = 0; j < game.Cols; j++)
                 {
-                    var cell = game.Board[i, j];
+                    var cell = game.Board[i][j];
                     if (cell.IsRevealed)
                     {
+                        // During normal play (cascade), never send mines to client
+                        // Only send mines when game is lost (all mines revealed)
+                        if (cell.IsMine && game.Status == GameStatus.Playing)
+                        {
+                            _logger.LogError($"CRITICAL: Mine at ({i},{j}) was revealed during cascade!");
+                            continue; // Skip mines during cascade
+                        }
+                        
                         revealedCells.Add(new
                         {
                             row = i,
@@ -109,11 +142,13 @@ public class HomeController : Controller
         {
             _logger.LogInformation($"ToggleFlag called with row={row}, col={col}");
             
-            var game = HttpContext.Session.Get<GameBoard>("game") ?? new GameBoard(Difficulty.Easy);
-            game.ToggleFlag(row, col);
-            HttpContext.Session.Set("game", game);
+            var game = _staticGame ?? new GameBoard(Difficulty.Easy);
+            if (_staticGame == null) _staticGame = game;
             
-            var cell = game.Board[row, col];
+            game.ToggleFlag(row, col);
+            _staticGame = game;
+            
+            var cell = game.Board[row][col];
             return Json(new { 
                 success = true, 
                 row = row, 
@@ -137,7 +172,7 @@ public class HomeController : Controller
             _logger.LogInformation("NewGame called");
             
             var game = new GameBoard(Difficulty.Easy);
-            HttpContext.Session.Set("game", game);
+            _staticGame = game;
             
             return Json(new { success = true, message = "New game started" });
         }
@@ -153,24 +188,33 @@ public class HomeController : Controller
     {
         try
         {
-            // Create a fresh game for testing
-            var game = new GameBoard(Difficulty.Easy);
+            // Use static game for testing
+            var game = _staticGame;
+            bool usingSession = game != null;
+            if (game == null)
+            {
+                game = new GameBoard(Difficulty.Easy);
+                _staticGame = game;
+                _logger.LogWarning("GetBoardState: No static game found, created new game");
+            }
+            else
+            {
+                _logger.LogInformation("GetBoardState: Using static game");
+            }
+            
+            // Get detailed mine information
+            var detailedMineInfo = game.GetDetailedMineInfo();
+            var boardStats = game.GetBoardStatistics();
+            var validationErrors = game.ValidateBoard();
             
             // Create a simplified board state for the client
             var boardState = new List<object>();
-            int mineCount = 0;
-            var minePositions = new List<object>();
             
             for (int i = 0; i < game.Rows; i++)
             {
                 for (int j = 0; j < game.Cols; j++)
                 {
-                    var cell = game.Board[i, j];
-                    if (cell.IsMine) 
-                    {
-                        mineCount++;
-                        minePositions.Add(new { row = i, col = j });
-                    }
+                    var cell = game.Board[i][j];
                     
                     boardState.Add(new
                     {
@@ -184,20 +228,18 @@ public class HomeController : Controller
                 }
             }
             
-            var validationErrors = game.ValidateBoard();
-            
             return Json(new { 
                 success = true, 
                 board = boardState,
                 gameStatus = game.Status.ToString(),
                 isInitialized = game.IsInitialized,
-                totalMines = mineCount,
-                expectedMines = game.MineCount,
                 difficulty = game.CurrentDifficulty.ToString(),
                 rows = game.Rows,
                 cols = game.Cols,
-                minePositions = minePositions,
-                validationErrors = validationErrors
+                detailedMineInfo = detailedMineInfo,
+                boardStatistics = boardStats,
+                validationErrors = validationErrors,
+                usingStaticGame = usingSession
             });
         }
         catch (Exception ex)
@@ -207,53 +249,5 @@ public class HomeController : Controller
         }
     }
 
-    [HttpPost]
-    public IActionResult TestReveal(int row, int col)
-    {
-        try
-        {
-            // Create a fresh game and test the reveal logic
-            var game = new GameBoard(Difficulty.Easy);
-            
-            _logger.LogInformation($"Testing reveal on fresh board at ({row},{col})");
-            
-            // Log initial state
-            var initialCell = game.Board[row, col];
-            _logger.LogInformation($"Initial cell state: IsMine={initialCell.IsMine}, AdjacentMines={initialCell.AdjacentMines}");
-            
-            // Reveal the cell
-            game.RevealCell(row, col);
-            
-            // Count revealed mines (should be 0 unless we clicked on a mine)
-            int revealedMines = 0;
-            for (int i = 0; i < game.Rows; i++)
-            {
-                for (int j = 0; j < game.Cols; j++)
-                {
-                    if (game.Board[i, j].IsRevealed && game.Board[i, j].IsMine)
-                    {
-                        revealedMines++;
-                    }
-                }
-            }
-            
-            return Json(new { 
-                success = true, 
-                clickedCell = new { 
-                    row = row, 
-                    col = col, 
-                    wasMine = initialCell.IsMine,
-                    adjacentMines = initialCell.AdjacentMines
-                },
-                revealedMines = revealedMines,
-                gameStatus = game.Status.ToString(),
-                message = revealedMines > 1 ? "ERROR: Multiple mines revealed!" : "OK"
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Error in TestReveal: row={row}, col={col}");
-            return Json(new { success = false, error = ex.Message });
-        }
-    }
+
 }
