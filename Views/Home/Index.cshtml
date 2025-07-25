@@ -8,12 +8,31 @@
         <label for="difficultySelect">Difficulty:</label>
         <select id="difficultySelect" onchange="changeDifficulty()">
             <option value="Easy" selected="@(Model.CurrentDifficulty == Difficulty.Easy)">Easy (9x9, 10 mines)</option>
+            <option value="Medium" selected="@(Model.CurrentDifficulty == Difficulty.Medium)">Medium (16x16, 40 mines)</option>
+            <option value="Hard" selected="@(Model.CurrentDifficulty == Difficulty.Hard)">Hard (16x30, 99 mines)</option>
+            <option value="Custom" selected="@(Model.CurrentDifficulty == Difficulty.Custom)">Custom</option>
         </select>
+    </div>
+    
+    <div id="customSettings" style="display: @(Model.CurrentDifficulty == Difficulty.Custom ? "block" : "none"); margin-top: 10px;">
+        <div style="display: inline-block; margin-right: 15px;">
+            <label for="customRows">Rows:</label>
+            <input type="number" id="customRows" min="5" max="30" value="@Model.Rows" style="width: 60px;">
+        </div>
+        <div style="display: inline-block; margin-right: 15px;">
+            <label for="customCols">Cols:</label>
+            <input type="number" id="customCols" min="5" max="50" value="@Model.Cols" style="width: 60px;">
+        </div>
+        <div style="display: inline-block; margin-right: 15px;">
+            <label for="customMines">Mines:</label>
+            <input type="number" id="customMines" min="1" max="999" value="@Model.MineCount" style="width: 60px;">
+        </div>
+        <button onclick="applyCustomSettings()" style="background-color: #4CAF50; color: white; padding: 5px 10px; border: none; border-radius: 3px;">Apply</button>
     </div>
     <div class="status" id="gameStatus">
         @if (Model.Status == GameStatus.Playing)
         {
-            <span>Playing - Mines: @Model.MineCount</span>
+            <span>Playing - Mines: @Model.MineCount | Flags: <span id="flagCount">@Model.GetFlagCount()</span></span>
         }
         else if (Model.Status == GameStatus.Won)
         {
@@ -28,8 +47,6 @@
 
 <div class="controls">
     <button onclick="newGameWithCurrentDifficulty()">New Game</button>
-    <button onclick="debugBoard()" style="background-color: #ff9800;">Debug Board</button>
-    <button onclick="showAllMines()" style="background-color: #e91e63; color: white;">Show All Mines</button>
 </div>
 
 <div class="game-board" id="gameBoard">
@@ -104,6 +121,12 @@
                     
                     updateGameStatus(data.gameStatus);
                     
+                    // If game is lost, show all mines
+                    if (data.gameStatus === 'Lost' && data.allMines) {
+                        console.log('Game lost, showing all mines:', data.allMines);
+                        showAllMinesOnLoss(data.allMines);
+                    }
+                    
                     // If game is over, disable all clicks
                     if (data.gameStatus === 'Won' || data.gameStatus === 'Lost') {
                         $('.cell').css('pointer-events', 'none');
@@ -125,7 +148,7 @@
                 if (data.success) {
                     console.log('Flag toggled successfully:', data);
                     updateCellFlag(row, col, data.isFlagged);
-                    updateGameStatus(data.gameStatus);
+                    updateGameStatus(data.gameStatus, @Model.MineCount, data.flagCount);
                 } else {
                     console.error('Error:', data.error);
                     alert('Error: ' + data.error);
@@ -197,9 +220,10 @@
             }
         }
 
-        function updateGameStatus(status, mineCount) {
+        function updateGameStatus(status, mineCount, flagCount) {
             var statusElement = $('#gameStatus');
             mineCount = mineCount || @Model.MineCount;
+            flagCount = flagCount !== undefined ? flagCount : parseInt($('#flagCount').text()) || 0;
             
             if (status === 'Won') {
                 statusElement.html('<span class="won">You Won! 🎉</span>');
@@ -208,7 +232,7 @@
                 statusElement.html('<span class="lost">Game Over 💥</span>');
                 showGameOver('💥 Game Over! You hit a mine! 💥', 'lost');
             } else {
-                statusElement.html('<span>Playing - Mines: ' + mineCount + '</span>');
+                statusElement.html('<span>Playing - Mines: ' + mineCount + ' | Flags: <span id="flagCount">' + flagCount + '</span></span>');
             }
         }
 
@@ -256,166 +280,86 @@
             }
         }
 
+        function showAllMinesOnLoss(allMines) {
+            // Show all mines when game is lost
+            allMines.forEach(function(mine) {
+                var cell = $('[data-row="' + mine.row + '"][data-col="' + mine.col + '"]');
+                
+                // Don't override the clicked mine (it should already be revealed)
+                if (!cell.hasClass('revealed')) {
+                    cell.addClass('revealed mine');
+                    cell.text('💣');
+                    cell.css({
+                        'background-color': '#ffcccc',
+                        'color': '#000'
+                    });
+                }
+            });
+        }
+
         function startNewGame() {
             hideGameOver();
             newGameWithCurrentDifficulty();
         }
 
         function changeDifficulty() {
-            // Only Easy mode for now
-            location.reload();
+            var difficulty = $('#difficultySelect').val();
+            console.log('🎮 Difficulty changed to:', difficulty);
+            
+            // Show/hide custom settings
+            if (difficulty === 'Custom') {
+                $('#customSettings').show();
+                console.log('📝 Showing custom settings');
+            } else {
+                $('#customSettings').hide();
+                console.log('🚀 Starting new game with difficulty:', difficulty);
+                // Start new game with selected difficulty
+                startNewGameWithDifficulty(difficulty);
+            }
+        }
+
+        function startNewGameWithDifficulty(difficulty) {
+            console.log('📡 Redirecting to difficulty:', difficulty);
+            // Redirect to Index with difficulty parameter instead of using AJAX
+            window.location.href = '/Home/Index?difficulty=' + difficulty;
+        }
+
+        function applyCustomSettings() {
+            var rows = parseInt($('#customRows').val());
+            var cols = parseInt($('#customCols').val());
+            var mines = parseInt($('#customMines').val());
+            
+            // Basic validation
+            if (rows < 5 || rows > 30) {
+                alert('Rows must be between 5 and 30');
+                return;
+            }
+            if (cols < 5 || cols > 50) {
+                alert('Columns must be between 5 and 50');
+                return;
+            }
+            if (mines < 1 || mines >= (rows * cols * 0.8)) {
+                alert('Mines must be between 1 and ' + Math.floor(rows * cols * 0.8));
+                return;
+            }
+            
+            // Redirect to Index with custom parameters
+            window.location.href = '/Home/Index?difficulty=Custom&rows=' + rows + '&cols=' + cols + '&mines=' + mines;
         }
 
         function newGameWithCurrentDifficulty() {
-            // Clear all debug styling before starting new game
-            $('.cell').removeClass('mine-debug').css({
-                'background-color': '',
-                'border': ''
-            });
+            var difficulty = $('#difficultySelect').val();
             
-            $.post('/Home/NewGame', function(data) {
-                if (data.success) {
-                    // Just reload the page for a completely fresh start
-                    location.reload();
-                } else {
-                    console.error('Error:', data.error);
-                    alert('Error: ' + data.error);
-                }
-            }).fail(function(xhr, status, error) {
-                console.error('AJAX Error:', error);
-                alert('Network error: ' + error);
-            });
+            if (difficulty === 'Custom') {
+                applyCustomSettings();
+            } else {
+                startNewGameWithDifficulty(difficulty);
+            }
         }
 
-        function debugBoard() {
-            $.get('/Home/GetBoardState', function(data) {
-                if (data.success) {
-                    console.log('=== FULL BOARD DEBUG INFO ===');
-                    console.log('Board State:', data);
-                    console.log('Detailed Mine Info:', data.detailedMineInfo);
-                    console.log('Board Statistics:', data.boardStatistics);
-                    
-                    // Log each mine's status
-                    console.log('=== MINE STATUS DETAILS ===');
-                    data.detailedMineInfo.forEach(function(mine) {
-                        console.log(`Mine at (${mine.row},${mine.col}): ${mine.status} - Revealed: ${mine.isRevealed}, Flagged: ${mine.isFlagged}`);
-                    });
-                    
-                    // Verify mine counting for a few cells
-                    var verificationResults = [];
-                    data.board.forEach(function(cell) {
-                        if (!cell.isMine && cell.adjacentMines > 0) {
-                            var actualCount = 0;
-                            for (var i = -1; i <= 1; i++) {
-                                for (var j = -1; j <= 1; j++) {
-                                    var checkRow = cell.row + i;
-                                    var checkCol = cell.col + j;
-                                    var adjacentCell = data.board.find(c => c.row === checkRow && c.col === checkCol);
-                                    if (adjacentCell && adjacentCell.isMine) {
-                                        actualCount++;
-                                    }
-                                }
-                            }
-                            if (actualCount !== cell.adjacentMines) {
-                                verificationResults.push({
-                                    position: '(' + cell.row + ',' + cell.col + ')',
-                                    expected: cell.adjacentMines,
-                                    actual: actualCount
-                                });
-                            }
-                        }
-                    });
-                    
-                    console.log('Mine Count Verification:', verificationResults);
-                    
-                    // Build detailed message
-                    var stats = data.boardStatistics;
-                    var message = '=== MINESWEEPER DEBUG REPORT ===\n\n';
-                    message += 'Game Info:\n';
-                    message += `- Difficulty: ${data.difficulty}\n`;
-                    message += `- Size: ${data.rows}x${data.cols}\n`;
-                    message += `- Game Status: ${data.gameStatus}\n\n`;
-                    
-                    message += 'Board Statistics:\n';
-                    message += `- Total Cells: ${stats.totalCells}\n`;
-                    message += `- Total Mines: ${stats.totalMines}\n`;
-                    message += `- Total Safe Cells: ${stats.totalSafeCells}\n`;
-                    message += `- Revealed Cells: ${stats.revealedCells}\n`;
-                    message += `- Revealed Mines: ${stats.revealedMines}\n`;
-                    message += `- Revealed Safe Cells: ${stats.revealedSafeCells}\n`;
-                    message += `- Hidden Cells: ${stats.hiddenCells}\n`;
-                    message += `- Flagged Cells: ${stats.flaggedCells}\n`;
-                    message += `- Correct Flags: ${stats.correctFlags}\n`;
-                    message += `- Incorrect Flags: ${stats.incorrectFlags}\n\n`;
-                    
-                    message += 'Mine Details:\n';
-                    data.detailedMineInfo.forEach(function(mine) {
-                        message += `- Mine at (${mine.row},${mine.col}): ${mine.status}\n`;
-                    });
-                    
-                    if (stats.revealedMines > 0 && data.gameStatus === 'Playing') {
-                        message += '\n🚨 CRITICAL ISSUE: Mines revealed during gameplay!\n';
-                    }
-                    
-                    if (verificationResults.length > 0) {
-                        message += '\n❌ Client-side mine count errors found! Check console for details.\n';
-                    } else {
-                        message += '\n✅ Client-side mine counting verification: PASSED\n';
-                    }
-                    
-                    if (data.validationErrors && data.validationErrors.length > 0) {
-                        message += '\n❌ Server-side validation errors:\n';
-                        data.validationErrors.forEach(function(error) {
-                            message += `- ${error}\n`;
-                        });
-                        console.log('Server validation errors:', data.validationErrors);
-                    } else {
-                        message += '\n✅ Server-side validation: PASSED\n';
-                    }
-                    
-                    alert(message);
-                } else {
-                    console.error('Error:', data.error);
-                    alert('Error: ' + data.error);
-                }
-            }).fail(function(xhr, status, error) {
-                console.error('AJAX Error:', error);
-                alert('Network error: ' + error);
-            });
-        }
 
-        function showAllMines() {
-            $.get('/Home/GetBoardState', function(data) {
-                if (data.success) {
-                    console.log('Revealing all mines for debugging');
-                    
-                    // Clear any existing debug styling first
-                    $('.cell').removeClass('mine-debug').css({
-                        'background-color': '',
-                        'border': ''
-                    });
-                    
-                    // Show all mines on the board
-                    data.minePositions.forEach(function(mine) {
-                        var cell = $('[data-row="' + mine.row + '"][data-col="' + mine.col + '"]');
-                        cell.addClass('mine-debug');
-                        cell.text('💣');
-                        cell.css({
-                            'background-color': '#ffcccc',
-                            'border': '2px solid #ff0000'
-                        });
-                    });
-                    
-                    alert('All ' + data.minePositions.length + ' mines are now visible with pink background and red border.\nClick "New Game" to reset.');
-                } else {
-                    console.error('Error:', data.error);
-                    alert('Error: ' + data.error);
-                }
-            }).fail(function(xhr, status, error) {
-                console.error('AJAX Error:', error);
-                alert('Network error: ' + error);
-            });
-        }
+
+
 
 
     </script>

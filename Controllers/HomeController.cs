@@ -13,19 +13,39 @@ public class HomeController : Controller
         _logger = logger;
     }
 
-    public IActionResult Index()
+    public IActionResult Index(string difficulty = "Easy", int rows = 9, int cols = 9, int mines = 10)
     {
         try
         {
-            Console.WriteLine("=== Controller Index() called ===");
-            var game = new GameBoard(Difficulty.Easy);
-            Console.WriteLine("=== Controller Index() returning view ===");
+            Console.WriteLine($"=== Controller Index() called with difficulty: {difficulty} ===");
+            
+            GameBoard game;
+            if (difficulty == "Custom")
+            {
+                Console.WriteLine($"Creating custom game: {rows}x{cols} with {mines} mines");
+                game = new GameBoard(rows, cols, mines);
+            }
+            else if (Enum.TryParse<Difficulty>(difficulty, out var diff))
+            {
+                Console.WriteLine($"Creating {diff} game");
+                game = new GameBoard(diff);
+            }
+            else
+            {
+                Console.WriteLine("Creating default Easy game");
+                game = new GameBoard(Difficulty.Easy);
+            }
+            
+            _staticGame = game; // Initialize static game
+            Console.WriteLine($"✅ Game created: {game.Rows}x{game.Cols} with {game.MineCount} mines, difficulty: {game.CurrentDifficulty}");
             return View(game);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in Index action");
+            Console.WriteLine($"❌ Error in Index: {ex.Message}");
             var fallbackGame = new GameBoard(Difficulty.Easy);
+            _staticGame = fallbackGame;
             return View(fallbackGame);
         }
     }
@@ -37,16 +57,11 @@ public class HomeController : Controller
         {
             _logger.LogInformation($"RevealCell called with row={row}, col={col}");
             
-            // Use static storage for testing instead of session
+            // Use static storage for game state
             var game = _staticGame ?? new GameBoard(Difficulty.Easy);
             if (_staticGame == null)
             {
                 _staticGame = game;
-                _logger.LogInformation("Created new static game");
-            }
-            else
-            {
-                _logger.LogInformation("Using existing static game");
             }
             
             // Log the cell state before revealing
@@ -55,20 +70,8 @@ public class HomeController : Controller
             
             game.RevealCell(row, col);
             
-            // Debug: Check revealed cells before saving to session
-            int revealedCount = 0;
-            for (int i = 0; i < game.Rows; i++)
-            {
-                for (int j = 0; j < game.Cols; j++)
-                {
-                    if (game.Board[i][j].IsRevealed) revealedCount++;
-                }
-            }
-            _logger.LogInformation($"Before saving to session: {revealedCount} cells revealed");
-            
             // Update static game
             _staticGame = game;
-            _logger.LogInformation("Updated static game");
             
             // Log any mines that got revealed (this should never happen)
             var revealedMines = new List<object>();
@@ -119,13 +122,25 @@ public class HomeController : Controller
                 }
             }
             
+            // If game is lost, send all mine positions to show them
+            var allMines = new List<object>();
+            if (game.Status == GameStatus.Lost)
+            {
+                var minePositions = game.GetMinePositions();
+                foreach (var mine in minePositions)
+                {
+                    allMines.Add(new { row = mine.row, col = mine.col });
+                }
+            }
+
             return Json(new { 
                 success = true, 
                 clickedRow = row, 
                 clickedCol = col,
                 revealedCells = revealedCells,
                 gameStatus = game.Status.ToString(),
-                revealedMinesCount = revealedMines.Count
+                revealedMinesCount = revealedMines.Count,
+                allMines = allMines
             });
         }
         catch (Exception ex)
@@ -154,7 +169,8 @@ public class HomeController : Controller
                 row = row, 
                 col = col,
                 isFlagged = cell.IsFlagged,
-                gameStatus = game.Status.ToString()
+                gameStatus = game.Status.ToString(),
+                flagCount = game.GetFlagCount()
             });
         }
         catch (Exception ex)
@@ -165,89 +181,60 @@ public class HomeController : Controller
     }
 
     [HttpPost]
-    public IActionResult NewGame()
+    public IActionResult NewGame(string difficulty = "Easy")
     {
         try
         {
-            _logger.LogInformation("NewGame called");
+            _logger.LogInformation($"NewGame called with difficulty: {difficulty}");
+            Console.WriteLine($"🎮 NewGame called with difficulty: {difficulty}");
             
-            var game = new GameBoard(Difficulty.Easy);
-            _staticGame = game;
-            
-            return Json(new { success = true, message = "New game started" });
+            if (Enum.TryParse<Difficulty>(difficulty, out var diff))
+            {
+                var game = new GameBoard(diff);
+                _staticGame = game;
+                Console.WriteLine($"✅ Created {diff} game: {game.Rows}x{game.Cols} with {game.MineCount} mines");
+                return Json(new { success = true, message = $"New {diff} game started" });
+            }
+            else
+            {
+                Console.WriteLine($"❌ Invalid difficulty: {difficulty}");
+                return Json(new { success = false, error = "Invalid difficulty" });
+            }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in NewGame");
+            Console.WriteLine($"❌ Error in NewGame: {ex.Message}");
             return Json(new { success = false, error = ex.Message });
         }
     }
 
-    [HttpGet]
-    public IActionResult GetBoardState()
+    [HttpPost]
+    public IActionResult NewCustomGame(int rows, int cols, int mines)
     {
         try
         {
-            // Use static game for testing
-            var game = _staticGame;
-            bool usingSession = game != null;
-            if (game == null)
-            {
-                game = new GameBoard(Difficulty.Easy);
-                _staticGame = game;
-                _logger.LogWarning("GetBoardState: No static game found, created new game");
-            }
-            else
-            {
-                _logger.LogInformation("GetBoardState: Using static game");
-            }
+            _logger.LogInformation($"NewCustomGame called with rows: {rows}, cols: {cols}, mines: {mines}");
             
-            // Get detailed mine information
-            var detailedMineInfo = game.GetDetailedMineInfo();
-            var boardStats = game.GetBoardStatistics();
-            var validationErrors = game.ValidateBoard();
-            
-            // Create a simplified board state for the client
-            var boardState = new List<object>();
-            
-            for (int i = 0; i < game.Rows; i++)
-            {
-                for (int j = 0; j < game.Cols; j++)
-                {
-                    var cell = game.Board[i][j];
-                    
-                    boardState.Add(new
-                    {
-                        row = i,
-                        col = j,
-                        isRevealed = cell.IsRevealed,
-                        isMine = cell.IsMine,
-                        isFlagged = cell.IsFlagged,
-                        adjacentMines = cell.AdjacentMines
-                    });
-                }
-            }
+            var game = new GameBoard(rows, cols, mines);
+            _staticGame = game;
             
             return Json(new { 
                 success = true, 
-                board = boardState,
-                gameStatus = game.Status.ToString(),
-                isInitialized = game.IsInitialized,
-                difficulty = game.CurrentDifficulty.ToString(),
-                rows = game.Rows,
-                cols = game.Cols,
-                detailedMineInfo = detailedMineInfo,
-                boardStatistics = boardStats,
-                validationErrors = validationErrors,
-                usingStaticGame = usingSession
+                message = "Custom game started",
+                actualRows = game.Rows,
+                actualCols = game.Cols,
+                actualMines = game.MineCount
             });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error in GetBoardState");
+            _logger.LogError(ex, "Error in NewCustomGame");
             return Json(new { success = false, error = ex.Message });
         }
     }
+
+
 
 
 }

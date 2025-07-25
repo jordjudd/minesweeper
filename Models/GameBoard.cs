@@ -5,7 +5,7 @@ public class GameBoard
     public int Rows { get; set; } = 9;
     public int Cols { get; set; } = 9;
     public int MineCount { get; set; } = 10;
-    public Cell[][] Board { get; set; }
+    public Cell[][] Board { get; set; } = null!;
     public GameStatus Status { get; set; } = GameStatus.Playing;
     public bool IsInitialized { get; set; } = true;
     public Difficulty CurrentDifficulty { get; set; } = Difficulty.Easy;
@@ -19,6 +19,26 @@ public class GameBoard
         MineCount = settings.mines;
         CurrentDifficulty = difficulty;
         
+        InitializeBoard();
+    }
+
+    public GameBoard(int rows, int cols, int mineCount)
+    {
+        // Custom settings
+        Rows = Math.Max(5, Math.Min(30, rows));     // Clamp rows between 5-30
+        Cols = Math.Max(5, Math.Min(50, cols));     // Clamp cols between 5-50
+        
+        // Ensure mine count is reasonable (at least 1, max 80% of total cells)
+        int maxMines = (int)(Rows * Cols * 0.8);
+        MineCount = Math.Max(1, Math.Min(maxMines, mineCount));
+        
+        CurrentDifficulty = Difficulty.Custom;
+        
+        InitializeBoard();
+    }
+
+    private void InitializeBoard()
+    {
         // Initialize board
         Board = new Cell[Rows][];
         for (int i = 0; i < Rows; i++)
@@ -135,9 +155,6 @@ public class GameBoard
         // Reveal this cell and cascade if it has 0 adjacent mines
         RevealCellRecursive(row, col);
 
-        // Verify mine integrity after cascade
-        VerifyMineIntegrity();
-
         // Check win condition
         CheckWinCondition();
     }
@@ -150,8 +167,6 @@ public class GameBoard
         // CRITICAL: Check if this is a mine FIRST - never reveal mines during cascade
         if (Board[row][col].IsMine) 
         {
-            // Log this as it should never happen during normal cascade
-            Console.WriteLine($"🚨 CRITICAL: Attempted to reveal mine at ({row},{col}) during cascade - BLOCKED");
             return;
         }
         
@@ -160,13 +175,11 @@ public class GameBoard
         if (Board[row][col].IsFlagged) return;
 
         // Reveal this cell (only safe cells get here)
-        Console.WriteLine($"✅ Revealing safe cell at ({row},{col}) with {Board[row][col].AdjacentMines} adjacent mines");
         Board[row][col].IsRevealed = true;
 
         // If this cell has 0 adjacent mines, cascade to reveal adjacent cells
         if (Board[row][col].AdjacentMines == 0)
         {
-            Console.WriteLine($"🔄 Cascading from ({row},{col}) - has 0 adjacent mines");
             for (int dr = -1; dr <= 1; dr++)
             {
                 for (int dc = -1; dc <= 1; dc++)
@@ -309,100 +322,20 @@ public class GameBoard
         return positions;
     }
 
-    public void VerifyMineIntegrity()
+    public int GetFlagCount()
     {
-        Console.WriteLine("=== MINE INTEGRITY CHECK ===");
-        int mineCount = 0;
+        int flagCount = 0;
         for (int i = 0; i < Rows; i++)
         {
             for (int j = 0; j < Cols; j++)
             {
-                if (Board[i][j].IsMine)
+                if (Board[i][j].IsFlagged)
                 {
-                    mineCount++;
-                    Console.WriteLine($"Mine at ({i},{j}): IsRevealed={Board[i][j].IsRevealed}, AdjacentMines={Board[i][j].AdjacentMines}");
+                    flagCount++;
                 }
             }
         }
-        Console.WriteLine($"Total mines found: {mineCount}/{MineCount}");
-    }
-
-    public List<object> GetDetailedMineInfo()
-    {
-        var mineInfo = new List<object>();
-        for (int i = 0; i < Rows; i++)
-        {
-            for (int j = 0; j < Cols; j++)
-            {
-                if (Board[i][j].IsMine)
-                {
-                    mineInfo.Add(new
-                    {
-                        row = i,
-                        col = j,
-                        isRevealed = Board[i][j].IsRevealed,
-                        isFlagged = Board[i][j].IsFlagged,
-                        status = Board[i][j].IsRevealed ? "REVEALED" : 
-                                Board[i][j].IsFlagged ? "FLAGGED" : "HIDDEN"
-                    });
-                }
-            }
-        }
-        return mineInfo;
-    }
-
-    public object GetBoardStatistics()
-    {
-        int totalCells = Rows * Cols;
-        int revealedCells = 0;
-        int revealedMines = 0;
-        int revealedSafeCells = 0;
-        int flaggedCells = 0;
-        int flaggedMines = 0;
-        int hiddenCells = 0;
-
-        for (int i = 0; i < Rows; i++)
-        {
-            for (int j = 0; j < Cols; j++)
-            {
-                var cell = Board[i][j];
-                
-                if (cell.IsRevealed)
-                {
-                    revealedCells++;
-                    if (cell.IsMine)
-                        revealedMines++;
-                    else
-                        revealedSafeCells++;
-                }
-                else
-                {
-                    hiddenCells++;
-                }
-
-                if (cell.IsFlagged)
-                {
-                    flaggedCells++;
-                    if (cell.IsMine)
-                        flaggedMines++;
-                }
-            }
-        }
-
-        return new
-        {
-            totalCells,
-            totalMines = MineCount,
-            totalSafeCells = totalCells - MineCount,
-            revealedCells,
-            revealedMines,
-            revealedSafeCells,
-            hiddenCells,
-            flaggedCells,
-            flaggedMines,
-            correctFlags = flaggedMines,
-            incorrectFlags = flaggedCells - flaggedMines
-        };
+        return flagCount;
     }
 }
 
@@ -425,7 +358,8 @@ public enum Difficulty
 {
     Easy,
     Medium,
-    Hard
+    Hard,
+    Custom
 }
 
 public static class DifficultySettings
@@ -437,6 +371,7 @@ public static class DifficultySettings
             Difficulty.Easy => (9, 9, 10),     // Beginner: 9x9 with 10 mines
             Difficulty.Medium => (16, 16, 40), // Intermediate: 16x16 with 40 mines
             Difficulty.Hard => (16, 30, 99),   // Expert: 16x30 with 99 mines
+            Difficulty.Custom => (9, 9, 10),   // Default for custom, will be overridden
             _ => (9, 9, 10)
         };
     }
@@ -448,6 +383,7 @@ public static class DifficultySettings
             Difficulty.Easy => "Easy (9x9, 10 mines)",
             Difficulty.Medium => "Medium (16x16, 40 mines)",
             Difficulty.Hard => "Hard (16x30, 99 mines)",
+            Difficulty.Custom => "Custom",
             _ => "Easy"
         };
     }
